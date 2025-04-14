@@ -389,22 +389,19 @@ const countLargePiecesOffBoard = (board: Board, player: Player): number => {
         }
     }
 
-    // Count M and L pieces still in hand
+    // Count large and medium pieces that are still off board
     let count = 0;
-    // We typically start with 2 each of S, M, L pieces
-    const piecesOnBoard = allPieces.reduce((acc, piece) => {
-        if (!piece.isOffBoard && (piece.size === "M" || piece.size === "L")) {
-            acc[piece.size] = (acc[piece.size] || 0) + 1;
-        }
-        return acc;
-    }, {} as Record<PieceSize, number>);
+    // Count 'L' pieces off board (max 2)
+    const largePieces = allPieces.filter(
+        (p) => p.size === "L" && p.isOffBoard,
+    );
+    // Count 'M' pieces off board (max 2)
+    const mediumPieces = allPieces.filter(
+        (p) => p.size === "M" && p.isOffBoard,
+    );
 
-    // Assume we start with 2 each, so calculate remaining
-    const remainingM = 2 - (piecesOnBoard["M"] || 0);
-    const remainingL = 2 - (piecesOnBoard["L"] || 0);
-
-    // Weight larger pieces more
-    return remainingM * 2 + remainingL * 3;
+    count = largePieces.length * 2 + mediumPieces.length; // Large pieces worth more
+    return count;
 };
 
 // Find opponent's winning move to block
