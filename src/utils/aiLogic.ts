@@ -191,23 +191,45 @@ const simulateMove = (board: Board, move: AIMove): Board => {
             ) {
                 sourceStack.pop();
             }
-        }
 
-        // Make sure the destination coordinates are valid
-        if (
-            move.row < 0 || move.row >= 3 ||
-            move.col < 0 || move.col >= 3 ||
-            !newBoard[move.row] || !newBoard[move.row][move.col]
-        ) {
-            console.error(
-                "Invalid destination coordinates in simulateMove",
-                move,
-            );
-            return board; // Return original board on error
-        }
+            // Make sure the destination coordinates are valid
+            if (
+                move.toRow < 0 || move.toRow >= 3 ||
+                move.toCol < 0 || move.toCol >= 3 ||
+                !newBoard[move.toRow] || !newBoard[move.toRow][move.toCol]
+            ) {
+                console.error(
+                    "Invalid destination coordinates in simulateMove",
+                    move,
+                );
+                return board; // Return original board on error
+            }
 
-        // Add to destination
-        newBoard[move.row][move.col].push({ ...move.piece, isOffBoard: false });
+            // Add to destination
+            newBoard[move.toRow][move.toCol].push({
+                ...move.piece,
+                isOffBoard: false,
+            });
+        } else if (move.type === "place") {
+            // Make sure the destination coordinates are valid
+            if (
+                move.row < 0 || move.row >= 3 ||
+                move.col < 0 || move.col >= 3 ||
+                !newBoard[move.row] || !newBoard[move.row][move.col]
+            ) {
+                console.error(
+                    "Invalid destination coordinates in simulateMove",
+                    move,
+                );
+                return board; // Return original board on error
+            }
+
+            // Add to destination
+            newBoard[move.row][move.col].push({
+                ...move.piece,
+                isOffBoard: false,
+            });
+        }
 
         return newBoard;
     } catch (error) {
@@ -354,7 +376,7 @@ const countControlledPositions = (
 // Count larger pieces still off board (bigger pieces are strategic assets)
 const countLargePiecesOffBoard = (board: Board, player: Player): number => {
     // Get all pieces for the player
-    const allPieces = [];
+    const allPieces: Piece[] = [];
     for (let r = 0; r < 3; r++) {
         for (let c = 0; c < 3; c++) {
             if (board[r][c]) {
@@ -442,14 +464,11 @@ const findWinningPositionInLine = (
     return null;
 };
 
-// Mini-max function for advanced AI decision making (placeholder - not fully implemented)
+// Simplified minimax function (not fully implemented)
 const minimax = (
     board: Board,
     depth: number,
-    isMaximizing: boolean,
     aiPlayer: Player,
-    alpha: number = -Infinity,
-    beta: number = Infinity,
 ): number => {
     // This is a simplified version of minimax for demonstration purposes
 
@@ -480,9 +499,15 @@ export const getAIMove = (
     for (const move of possibleMoves) {
         const nextBoard = simulateMove(board, move);
         if (calculateWinner(nextBoard) === aiPlayer) {
-            console.log(
-                `AI Found Winning Move: ${move.type} ${move.piece.id} to [${move.row},${move.col}]`,
-            );
+            if (move.type === "place") {
+                console.log(
+                    `AI Found Winning Move: ${move.type} ${move.piece.id} to [${move.row},${move.col}]`,
+                );
+            } else {
+                console.log(
+                    `AI Found Winning Move: ${move.type} ${move.piece.id} from [${move.fromRow},${move.fromCol}] to [${move.toRow},${move.toCol}]`,
+                );
+            }
             return move;
         }
     }
@@ -493,9 +518,13 @@ export const getAIMove = (
         const [blockRow, blockCol] = opponentWinningPos;
 
         // Try to find a piece that can block this position
-        const blockingMoves = possibleMoves.filter((move) =>
-            move.row === blockRow && move.col === blockCol
-        );
+        const blockingMoves = possibleMoves.filter((move) => {
+            if (move.type === "place") {
+                return move.row === blockRow && move.col === blockCol;
+            } else {
+                return move.toRow === blockRow && move.toCol === blockCol;
+            }
+        });
 
         if (blockingMoves.length > 0) {
             // Sort by size preference - prefer to use LARGER pieces for blocking
@@ -509,12 +538,17 @@ export const getAIMove = (
                 return sizeValues[b.piece.size] - sizeValues[a.piece.size]; // Larger pieces first
             });
 
-            console.log(
-                `AI Blocking Opponent Win at [${blockRow},${blockCol}] with ${
-                    blockingMoves[0].piece.size
-                } piece`,
-            );
-            return blockingMoves[0];
+            const bestBlockingMove = blockingMoves[0];
+            if (bestBlockingMove.type === "place") {
+                console.log(
+                    `AI Blocking Opponent Win at [${blockRow},${blockCol}] with ${bestBlockingMove.piece.size} piece`,
+                );
+            } else {
+                console.log(
+                    `AI Blocking Opponent Win at [${blockRow},${blockCol}] by moving ${bestBlockingMove.piece.size} piece from [${bestBlockingMove.fromRow},${bestBlockingMove.fromCol}]`,
+                );
+            }
+            return bestBlockingMove;
         }
     }
 
@@ -533,18 +567,30 @@ export const getAIMove = (
     }
 
     if (bestMove) {
-        console.log(
-            `AI Choosing Strategic Move: ${bestMove.type} ${bestMove.piece.id} (score: ${bestScore})`,
-        );
+        if (bestMove.type === "place") {
+            console.log(
+                `AI Choosing Strategic Move: ${bestMove.type} ${bestMove.piece.id} to [${bestMove.row},${bestMove.col}] (score: ${bestScore})`,
+            );
+        } else {
+            console.log(
+                `AI Choosing Strategic Move: ${bestMove.type} ${bestMove.piece.id} from [${bestMove.fromRow},${bestMove.fromCol}] to [${bestMove.toRow},${bestMove.toCol}] (score: ${bestScore})`,
+            );
+        }
         return bestMove;
     }
 
     // Fallback to random move (shouldn't reach here if evaluation function is robust)
     const randomMove =
         possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-    console.log(
-        `AI Choosing Random Move: ${randomMove.type} ${randomMove.piece.id}`,
-    );
+    if (randomMove.type === "place") {
+        console.log(
+            `AI Choosing Random Move: ${randomMove.type} ${randomMove.piece.id} to [${randomMove.row},${randomMove.col}]`,
+        );
+    } else {
+        console.log(
+            `AI Choosing Random Move: ${randomMove.type} ${randomMove.piece.id} from [${randomMove.fromRow},${randomMove.fromCol}] to [${randomMove.toRow},${randomMove.toCol}]`,
+        );
+    }
     return randomMove;
 };
 

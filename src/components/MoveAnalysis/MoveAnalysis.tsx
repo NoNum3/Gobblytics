@@ -11,7 +11,6 @@ interface MoveAnalysisProps {
 const MoveAnalysis: React.FC<MoveAnalysisProps> = ({ aiPlayer }) => {
     const { t } = useTranslation();
     const board = useGameStore((state) => state.board);
-    const pieces = useGameStore((state) => state.pieces);
     const humanPlayer = aiPlayer === "Red" ? "Blue" : "Red";
 
     // Calculate score for both players
