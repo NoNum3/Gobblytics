@@ -1,7 +1,13 @@
 import type { Board, BoardCell, Piece, PieceSize, Player } from "../types/game";
 
 // --- Type for AI Move ---
-type PlaceMove = { type: "place"; piece: Piece; row: number; col: number };
+type PlaceMove = {
+    type: "place";
+    piece: Piece;
+    row: number;
+    col: number;
+    moveReason?: string;
+};
 type MoveMove = {
     type: "move";
     piece: Piece;
@@ -9,8 +15,27 @@ type MoveMove = {
     fromCol: number;
     toRow: number;
     toCol: number;
+    moveReason?: string;
 };
 export type AIMove = PlaceMove | MoveMove;
+
+// Types of move reasons
+export type MoveReason =
+    | "winMove"
+    | "blockWin"
+    | "createFork"
+    | "blockFork"
+    | "centerControl"
+    | "cornerControl"
+    | "connectingPieces"
+    | "blockingLine"
+    | "gobblePiece"
+    | "recoveryMove"
+    | "smallestPiece"
+    | "largestForBlock"
+    | "diagonalThreat"
+    | "openingMove"
+    | "strategicAdvantage";
 
 // --- Helper Functions (some might be duplicates from gameStore, consider refactoring later) ---
 const getTopPiece = (cell: BoardCell): Piece | null => {
@@ -379,8 +404,9 @@ const countLargePiecesOffBoard = (board: Board, player: Player): number => {
     const allPieces: Piece[] = [];
     for (let r = 0; r < 3; r++) {
         for (let c = 0; c < 3; c++) {
-            if (board[r][c]) {
-                board[r][c].forEach((piece) => {
+            const cell = board[r][c];
+            if (cell !== null && cell !== undefined) {
+                cell.forEach((piece) => {
                     if (piece.player === player) {
                         allPieces.push(piece);
                     }
@@ -487,108 +513,197 @@ export const getAIMove = (
     aiPieces: Piece[],
     aiPlayer: Player,
 ): AIMove | null => {
-    const possibleMoves = getAllPossibleMoves(board, aiPieces, aiPlayer);
-    if (possibleMoves.length === 0) return null; // No moves possible
+    try {
+        const possibleMoves = getAllPossibleMoves(board, aiPieces, aiPlayer);
+        if (possibleMoves.length === 0) return null; // No moves possible
 
-    const opponent: Player = aiPlayer === "Red" ? "Blue" : "Red";
+        const opponent: Player = aiPlayer === "Red" ? "Blue" : "Red";
+        const topPiecesBoard = board.map((row) => row.map(getTopPiece));
+        const totalMoves = countPiecesOnBoard(board);
+        const isOpeningPhase = totalMoves < 3;
 
-    // 1. Check if AI can win in one move
-    for (const move of possibleMoves) {
-        const nextBoard = simulateMove(board, move);
-        if (calculateWinner(nextBoard) === aiPlayer) {
-            if (move.type === "place") {
-                console.log(
-                    `AI Found Winning Move: ${move.type} ${move.piece.id} to [${move.row},${move.col}]`,
-                );
-            } else {
-                console.log(
-                    `AI Found Winning Move: ${move.type} ${move.piece.id} from [${move.fromRow},${move.fromCol}] to [${move.toRow},${move.toCol}]`,
-                );
-            }
-            return move;
+        // 1. Core Decision Priority Hierarchy
+        // 1.1 Win in one move
+        const winningMove = findWinningMove(board, possibleMoves, aiPlayer);
+        if (winningMove) {
+            winningMove.moveReason = "winMove";
+            return winningMove;
         }
-    }
 
-    // 2. Check if opponent can win in the next move and block
-    const opponentWinningPos = findOpponentWinningMove(board, aiPlayer);
-    if (opponentWinningPos) {
-        const [blockRow, blockCol] = opponentWinningPos;
+        // 1.2 Block opponent's win
+        const blockingMove = findBlockingMove(board, possibleMoves, aiPlayer);
+        if (blockingMove) {
+            blockingMove.moveReason = "blockWin";
+            return blockingMove;
+        }
 
-        // Try to find a piece that can block this position
-        const blockingMoves = possibleMoves.filter((move) => {
+        // 1.3 Create a fork (multiple winning threats)
+        const forkMove = findForkCreationMove(board, possibleMoves, aiPlayer);
+        if (forkMove) {
+            forkMove.moveReason = "createFork";
+            return forkMove;
+        }
+
+        // 1.4 Block opponent's fork
+        const blockForkMove = findBlockForkMove(board, possibleMoves, aiPlayer);
+        if (blockForkMove) {
+            blockForkMove.moveReason = "blockFork";
+            return blockForkMove;
+        }
+
+        // 2. Opening Phase Rules (if it's early in the game)
+        if (isOpeningPhase) {
+            // 2.1 First move - center if empty
+            if (totalMoves === 0 && !topPiecesBoard[1][1]) {
+                const centerMoves = possibleMoves.filter((move) =>
+                    move.type === "place" && move.row === 1 && move.col === 1
+                );
+
+                if (centerMoves.length > 0) {
+                    // Use smallest piece for center in opening
+                    const smallestPieceMove = findSmallestPieceMove(
+                        centerMoves,
+                    );
+                    smallestPieceMove.moveReason = "openingMove";
+                    return smallestPieceMove;
+                }
+            }
+
+            // 2.2 If opponent took center, take a corner
+            if (
+                topPiecesBoard[1][1] &&
+                topPiecesBoard[1][1]?.player !== aiPlayer
+            ) {
+                const cornerMoves = possibleMoves.filter((move) => {
+                    if (move.type !== "place") return false;
+                    return (
+                        (move.row === 0 && move.col === 0) ||
+                        (move.row === 0 && move.col === 2) ||
+                        (move.row === 2 && move.col === 0) ||
+                        (move.row === 2 && move.col === 2)
+                    );
+                });
+
+                if (cornerMoves.length > 0) {
+                    const smallestPieceMove = findSmallestPieceMove(
+                        cornerMoves,
+                    );
+                    smallestPieceMove.moveReason = "cornerControl";
+                    return smallestPieceMove;
+                }
+            }
+        }
+
+        // If we've gotten here, do a fallback to a simpler strategy
+
+        // Try to place in center if available
+        if (!topPiecesBoard[1][1]) {
+            const centerMoves = possibleMoves.filter((move) => {
+                if (move.type === "place") {
+                    return move.row === 1 && move.col === 1;
+                } else {
+                    return move.toRow === 1 && move.toCol === 1;
+                }
+            });
+
+            if (centerMoves.length > 0) {
+                centerMoves[0].moveReason = "centerControl";
+                return centerMoves[0];
+            }
+        }
+
+        // Try any corner
+        const cornerMoves = possibleMoves.filter((move) => {
             if (move.type === "place") {
-                return move.row === blockRow && move.col === blockCol;
+                return (
+                    (move.row === 0 && move.col === 0) ||
+                    (move.row === 0 && move.col === 2) ||
+                    (move.row === 2 && move.col === 0) ||
+                    (move.row === 2 && move.col === 2)
+                );
             } else {
-                return move.toRow === blockRow && move.toCol === blockCol;
+                return (
+                    (move.toRow === 0 && move.toCol === 0) ||
+                    (move.toRow === 0 && move.toCol === 2) ||
+                    (move.toRow === 2 && move.toCol === 0) ||
+                    (move.toRow === 2 && move.toCol === 2)
+                );
             }
         });
 
-        if (blockingMoves.length > 0) {
-            // Sort by size preference - prefer to use LARGER pieces for blocking
-            // This is more strategic since it prevents the opponent from gobbling the blocker
-            blockingMoves.sort((a, b) => {
-                const sizeValues: Record<PieceSize, number> = {
-                    S: 1,
-                    M: 2,
-                    L: 3,
-                };
-                return sizeValues[b.piece.size] - sizeValues[a.piece.size]; // Larger pieces first
-            });
+        if (cornerMoves.length > 0) {
+            cornerMoves[0].moveReason = "cornerControl";
+            return cornerMoves[0];
+        }
 
-            const bestBlockingMove = blockingMoves[0];
-            if (bestBlockingMove.type === "place") {
-                console.log(
-                    `AI Blocking Opponent Win at [${blockRow},${blockCol}] with ${bestBlockingMove.piece.size} piece`,
-                );
-            } else {
-                console.log(
-                    `AI Blocking Opponent Win at [${blockRow},${blockCol}] by moving ${bestBlockingMove.piece.size} piece from [${bestBlockingMove.fromRow},${bestBlockingMove.fromCol}]`,
-                );
+        // Last resort - just pick the first move
+        if (possibleMoves.length > 0) {
+            possibleMoves[0].moveReason = "strategicAdvantage";
+            return possibleMoves[0];
+        }
+
+        // No valid moves found
+        return null;
+    } catch (error) {
+        console.error("Error in AI decision making:", error);
+
+        // Return a safe fallback - first valid placement move
+        try {
+            const aiOffBoardPieces = aiPieces.filter((p) => p.isOffBoard);
+            if (aiOffBoardPieces.length === 0) return null;
+
+            // Try to find any valid spot on the board
+            for (let r = 0; r < 3; r++) {
+                for (let c = 0; c < 3; c++) {
+                    const topPiece = getTopPiece(board[r][c]);
+
+                    // If empty or can gobble with largest piece
+                    if (!topPiece || (topPiece.player !== aiPlayer)) {
+                        const largePieces = aiOffBoardPieces.filter((p) =>
+                            p.size === "L"
+                        );
+                        const mediumPieces = aiOffBoardPieces.filter((p) =>
+                            p.size === "M"
+                        );
+                        const smallPieces = aiOffBoardPieces.filter((p) =>
+                            p.size === "S"
+                        );
+
+                        // Try large piece first, then medium, then small
+                        let pieceToUse = null;
+                        if (largePieces.length > 0) {
+                            pieceToUse = largePieces[0];
+                        } else if (mediumPieces.length > 0) {
+                            pieceToUse = mediumPieces[0];
+                        } else if (smallPieces.length > 0) {
+                            pieceToUse = smallPieces[0];
+                        }
+
+                        if (
+                            pieceToUse &&
+                            (!topPiece ||
+                                comparePieceSizes(
+                                        pieceToUse.size,
+                                        topPiece.size,
+                                    ) > 0)
+                        ) {
+                            return {
+                                type: "place",
+                                piece: pieceToUse,
+                                row: r,
+                                col: c,
+                                moveReason: "fallbackMove",
+                            };
+                        }
+                    }
+                }
             }
-            return bestBlockingMove;
+        } catch (fallbackError) {
+            console.error("Error in AI fallback logic:", fallbackError);
         }
+
+        return null;
     }
-
-    // 3. Strategic moves based on position evaluation
-    let bestScore = -Infinity;
-    let bestMove: AIMove | null = null;
-
-    for (const move of possibleMoves) {
-        const nextBoard = simulateMove(board, move);
-        const moveScore = evaluatePosition(nextBoard, aiPlayer);
-
-        if (moveScore > bestScore) {
-            bestScore = moveScore;
-            bestMove = move;
-        }
-    }
-
-    if (bestMove) {
-        if (bestMove.type === "place") {
-            console.log(
-                `AI Choosing Strategic Move: ${bestMove.type} ${bestMove.piece.id} to [${bestMove.row},${bestMove.col}] (score: ${bestScore})`,
-            );
-        } else {
-            console.log(
-                `AI Choosing Strategic Move: ${bestMove.type} ${bestMove.piece.id} from [${bestMove.fromRow},${bestMove.fromCol}] to [${bestMove.toRow},${bestMove.toCol}] (score: ${bestScore})`,
-            );
-        }
-        return bestMove;
-    }
-
-    // Fallback to random move (shouldn't reach here if evaluation function is robust)
-    const randomMove =
-        possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-    if (randomMove.type === "place") {
-        console.log(
-            `AI Choosing Random Move: ${randomMove.type} ${randomMove.piece.id} to [${randomMove.row},${randomMove.col}]`,
-        );
-    } else {
-        console.log(
-            `AI Choosing Random Move: ${randomMove.type} ${randomMove.piece.id} from [${randomMove.fromRow},${randomMove.fromCol}] to [${randomMove.toRow},${randomMove.toCol}]`,
-        );
-    }
-    return randomMove;
 };
 
 // Add these new helper functions for enhanced evaluation:
@@ -641,4 +756,494 @@ const evaluatePieceSizeAdvantage = (
     }
 
     return playerSizeSum - opponentSizeSum;
+};
+
+// --- AI Strategy Helper Functions ---
+
+// Count total pieces on the board
+const countPiecesOnBoard = (board: Board): number => {
+    let count = 0;
+    for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+            if (board[r][c]) {
+                count += board[r][c]!.length;
+            }
+        }
+    }
+    return count;
+};
+
+// Find a move that will win the game
+const findWinningMove = (
+    board: Board,
+    possibleMoves: AIMove[],
+    player: Player,
+): AIMove | null => {
+    for (const move of possibleMoves) {
+        const nextBoard = simulateMove(board, move);
+        if (calculateWinner(nextBoard) === player) {
+            return move;
+        }
+    }
+    return null;
+};
+
+// Find a move to block opponent's winning move
+const findBlockingMove = (
+    board: Board,
+    possibleMoves: AIMove[],
+    player: Player,
+): AIMove | null => {
+    const opponent = player === "Red" ? "Blue" : "Red";
+    const opponentWinningPos = findOpponentWinningMove(board, player);
+
+    if (opponentWinningPos) {
+        const [blockRow, blockCol] = opponentWinningPos;
+
+        // Find moves that block this position
+        const blockingMoves = possibleMoves.filter((move) => {
+            if (move.type === "place") {
+                return move.row === blockRow && move.col === blockCol;
+            } else {
+                return move.toRow === blockRow && move.toCol === blockCol;
+            }
+        });
+
+        if (blockingMoves.length > 0) {
+            // Sort by size preference - prefer to use LARGER pieces for blocking
+            blockingMoves.sort((a, b) => {
+                const sizeValues: Record<PieceSize, number> = {
+                    S: 1,
+                    M: 2,
+                    L: 3,
+                };
+                return sizeValues[b.piece.size] - sizeValues[a.piece.size]; // Larger pieces first
+            });
+
+            return blockingMoves[0];
+        }
+    }
+
+    return null;
+};
+
+// Find a move that creates multiple winning threats (a fork)
+const findForkCreationMove = (
+    board: Board,
+    possibleMoves: AIMove[],
+    player: Player,
+): AIMove | null => {
+    for (const move of possibleMoves) {
+        const nextBoard = simulateMove(board, move);
+        const threats = countThreats(
+            nextBoard.map((row) => row.map(getTopPiece)),
+            player,
+        );
+
+        // If a move creates two or more threats, it's a fork
+        if (threats >= 2) {
+            return move;
+        }
+    }
+    return null;
+};
+
+// Find a move that blocks opponent from creating a fork
+const findBlockForkMove = (
+    board: Board,
+    possibleMoves: AIMove[],
+    player: Player,
+): AIMove | null => {
+    const opponent = player === "Red" ? "Blue" : "Red";
+
+    // For each opponent's possible move, check if it creates a fork
+    for (const move of possibleMoves) {
+        // If this move prevents opponent from creating any forks next turn
+        let preventsAllForks = true;
+
+        // Simulate our move
+        const afterMoveBoard = simulateMove(board, move);
+
+        // Check if opponent can create a fork after our move
+        for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 3; c++) {
+                // Try opponent placing in each empty cell
+                if (
+                    !getTopPiece(afterMoveBoard[r][c]) ||
+                    getTopPiece(afterMoveBoard[r][c])?.player !== opponent
+                ) {
+                    // Simulate opponent move
+                    const opponentMoveBoard = JSON.parse(
+                        JSON.stringify(afterMoveBoard),
+                    );
+                    if (!opponentMoveBoard[r][c]) {
+                        opponentMoveBoard[r][c] = [];
+                    }
+
+                    // Assume opponent uses a large piece
+                    opponentMoveBoard[r][c].push({
+                        id: "opponent-sim-piece",
+                        player: opponent,
+                        size: "L",
+                        isOffBoard: false,
+                    });
+
+                    // Count threats after opponent move
+                    const threats = countThreats(
+                        opponentMoveBoard.map((row: BoardCell[]) =>
+                            row.map(getTopPiece)
+                        ),
+                        opponent,
+                    );
+                    if (threats >= 2) {
+                        preventsAllForks = false;
+                        break;
+                    }
+                }
+            }
+            if (!preventsAllForks) break;
+        }
+
+        if (preventsAllForks) {
+            return move;
+        }
+    }
+
+    return null;
+};
+
+// Find a move that blocks a gap in an opponent's two non-adjacent pieces
+const findGapBlockingMove = (
+    board: Board,
+    possibleMoves: AIMove[],
+    player: Player,
+): AIMove | null => {
+    const opponent = player === "Red" ? "Blue" : "Red";
+    const topPiecesBoard = board.map((row) => row.map(getTopPiece));
+
+    // Check rows
+    for (let r = 0; r < 3; r++) {
+        if (
+            !topPiecesBoard[r][0] &&
+            topPiecesBoard[r][1]?.player === opponent &&
+            topPiecesBoard[r][2]?.player === opponent
+        ) {
+            // Gap at [r][0]
+            const blockingMoves = findMovesToPosition(possibleMoves, r, 0);
+            if (blockingMoves.length > 0) return blockingMoves[0];
+        }
+        if (
+            topPiecesBoard[r][0]?.player === opponent &&
+            !topPiecesBoard[r][1] && topPiecesBoard[r][2]?.player === opponent
+        ) {
+            // Gap at [r][1]
+            const blockingMoves = findMovesToPosition(possibleMoves, r, 1);
+            if (blockingMoves.length > 0) return blockingMoves[0];
+        }
+        if (
+            topPiecesBoard[r][0]?.player === opponent &&
+            topPiecesBoard[r][1]?.player === opponent && !topPiecesBoard[r][2]
+        ) {
+            // Gap at [r][2]
+            const blockingMoves = findMovesToPosition(possibleMoves, r, 2);
+            if (blockingMoves.length > 0) return blockingMoves[0];
+        }
+    }
+
+    // Check columns
+    for (let c = 0; c < 3; c++) {
+        if (
+            !topPiecesBoard[0][c] &&
+            topPiecesBoard[1][c]?.player === opponent &&
+            topPiecesBoard[2][c]?.player === opponent
+        ) {
+            // Gap at [0][c]
+            const blockingMoves = findMovesToPosition(possibleMoves, 0, c);
+            if (blockingMoves.length > 0) return blockingMoves[0];
+        }
+        if (
+            topPiecesBoard[0][c]?.player === opponent &&
+            !topPiecesBoard[1][c] && topPiecesBoard[2][c]?.player === opponent
+        ) {
+            // Gap at [1][c]
+            const blockingMoves = findMovesToPosition(possibleMoves, 1, c);
+            if (blockingMoves.length > 0) return blockingMoves[0];
+        }
+        if (
+            topPiecesBoard[0][c]?.player === opponent &&
+            topPiecesBoard[1][c]?.player === opponent && !topPiecesBoard[2][c]
+        ) {
+            // Gap at [2][c]
+            const blockingMoves = findMovesToPosition(possibleMoves, 2, c);
+            if (blockingMoves.length > 0) return blockingMoves[0];
+        }
+    }
+
+    // Check diagonals
+    if (
+        !topPiecesBoard[0][0] && topPiecesBoard[1][1]?.player === opponent &&
+        topPiecesBoard[2][2]?.player === opponent
+    ) {
+        // Gap at [0][0]
+        const blockingMoves = findMovesToPosition(possibleMoves, 0, 0);
+        if (blockingMoves.length > 0) return blockingMoves[0];
+    }
+    if (
+        topPiecesBoard[0][0]?.player === opponent && !topPiecesBoard[1][1] &&
+        topPiecesBoard[2][2]?.player === opponent
+    ) {
+        // Gap at [1][1]
+        const blockingMoves = findMovesToPosition(possibleMoves, 1, 1);
+        if (blockingMoves.length > 0) return blockingMoves[0];
+    }
+    if (
+        topPiecesBoard[0][0]?.player === opponent &&
+        topPiecesBoard[1][1]?.player === opponent && !topPiecesBoard[2][2]
+    ) {
+        // Gap at [2][2]
+        const blockingMoves = findMovesToPosition(possibleMoves, 2, 2);
+        if (blockingMoves.length > 0) return blockingMoves[0];
+    }
+
+    if (
+        !topPiecesBoard[0][2] && topPiecesBoard[1][1]?.player === opponent &&
+        topPiecesBoard[2][0]?.player === opponent
+    ) {
+        // Gap at [0][2]
+        const blockingMoves = findMovesToPosition(possibleMoves, 0, 2);
+        if (blockingMoves.length > 0) return blockingMoves[0];
+    }
+    if (
+        topPiecesBoard[0][2]?.player === opponent && !topPiecesBoard[1][1] &&
+        topPiecesBoard[2][0]?.player === opponent
+    ) {
+        // Gap at [1][1]
+        const blockingMoves = findMovesToPosition(possibleMoves, 1, 1);
+        if (blockingMoves.length > 0) return blockingMoves[0];
+    }
+    if (
+        topPiecesBoard[0][2]?.player === opponent &&
+        topPiecesBoard[1][1]?.player === opponent && !topPiecesBoard[2][0]
+    ) {
+        // Gap at [2][0]
+        const blockingMoves = findMovesToPosition(possibleMoves, 2, 0);
+        if (blockingMoves.length > 0) return blockingMoves[0];
+    }
+
+    return null;
+};
+
+// Find all moves that target a specific position
+const findMovesToPosition = (
+    moves: AIMove[],
+    row: number,
+    col: number,
+): AIMove[] => {
+    return moves.filter((move) => {
+        if (move.type === "place") {
+            return move.row === row && move.col === col;
+        } else {
+            return move.toRow === row && move.toCol === col;
+        }
+    });
+};
+
+// Find a move that creates a diagonal threat
+const findDiagonalThreatMove = (
+    board: Board,
+    possibleMoves: AIMove[],
+    player: Player,
+): AIMove | null => {
+    const topPiecesBoard = board.map((row) => row.map(getTopPiece));
+
+    for (const move of possibleMoves) {
+        const targetRow = move.type === "place" ? move.row : move.toRow;
+        const targetCol = move.type === "place" ? move.col : move.toCol;
+
+        // Check if the move is on a diagonal
+        const isOnMainDiagonal = targetRow === targetCol;
+        const isOnAntiDiagonal = targetRow + targetCol === 2;
+
+        if (!isOnMainDiagonal && !isOnAntiDiagonal) continue;
+
+        // Simulate the move
+        const nextBoard = simulateMove(board, move);
+        const nextTopPiecesBoard = nextBoard.map((row) => row.map(getTopPiece));
+
+        // Check for diagonal threats
+        if (isOnMainDiagonal) {
+            const mainDiag = [
+                nextTopPiecesBoard[0][0],
+                nextTopPiecesBoard[1][1],
+                nextTopPiecesBoard[2][2],
+            ];
+            if (isLineThreat(mainDiag, player)) {
+                return move;
+            }
+        }
+
+        if (isOnAntiDiagonal) {
+            const antiDiag = [
+                nextTopPiecesBoard[0][2],
+                nextTopPiecesBoard[1][1],
+                nextTopPiecesBoard[2][0],
+            ];
+            if (isLineThreat(antiDiag, player)) {
+                return move;
+            }
+        }
+    }
+
+    return null;
+};
+
+// Find the move that uses the smallest viable piece from a set of moves
+const findSmallestPieceMove = (moves: AIMove[]): AIMove => {
+    const sortedMoves = [...moves].sort((a, b) => {
+        const sizeValues: Record<PieceSize, number> = { S: 1, M: 2, L: 3 };
+        return sizeValues[a.piece.size] - sizeValues[b.piece.size];
+    });
+
+    return sortedMoves[0];
+};
+
+// Find a viable move that uses the smallest piece strategically
+const findSmallestViablePieceMove = (
+    board: Board,
+    possibleMoves: AIMove[],
+    player: Player,
+): AIMove | null => {
+    // Filter to only placement moves (using a new piece)
+    const placementMoves = possibleMoves.filter((move) =>
+        move.type === "place"
+    );
+
+    if (placementMoves.length === 0) return null;
+
+    // Find the smallest piece that can be used effectively
+    return findSmallestPieceMove(placementMoves);
+};
+
+// Check if AI should recover a piece from the board
+const shouldRecoverPiece = (board: Board, player: Player): boolean => {
+    const opponent = player === "Red" ? "Blue" : "Red";
+
+    // Count pieces on board by player
+    let playerPieces = 0;
+    let opponentPieces = 0;
+
+    for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+            const topPiece = getTopPiece(board[r][c]);
+            if (topPiece) {
+                if (topPiece.player === player) {
+                    playerPieces++;
+                } else {
+                    opponentPieces++;
+                }
+            }
+        }
+    }
+
+    // If opponent has more pieces on board, consider recovering
+    return opponentPieces > playerPieces;
+};
+
+// Find a move that creates a trap for the opponent
+const findTrapMove = (
+    board: Board,
+    possibleMoves: AIMove[],
+    player: Player,
+): AIMove | null => {
+    const opponent = player === "Red" ? "Blue" : "Red";
+
+    for (const move of possibleMoves) {
+        // Simulate the move
+        const nextBoard = simulateMove(board, move);
+
+        // If this move creates a piece that can be covered...
+        if (move.type === "place" && move.piece.size !== "L") {
+            // Check if covering this piece would lead to a winning position for us
+            for (let r = 0; r < 3; r++) {
+                for (let c = 0; c < 3; c++) {
+                    // Skip the position we just moved to
+                    if (
+                        move.type === "place" && r === move.row &&
+                        c === move.col
+                    ) continue;
+
+                    // Check if we can create a winning threat at this position
+                    const simulatedCoverBoard = JSON.parse(
+                        JSON.stringify(nextBoard),
+                    );
+                    const topPiece = getTopPiece(
+                        simulatedCoverBoard[move.row][move.col],
+                    );
+
+                    // Simulate opponent covering our piece
+                    if (topPiece && topPiece.player === player) {
+                        // Remove our piece (simulating it's covered)
+                        simulatedCoverBoard[move.row][move.col].pop();
+
+                        // Add opponent piece
+                        simulatedCoverBoard[move.row][move.col].push({
+                            id: "opponent-trap-sim",
+                            player: opponent,
+                            size: "L", // Opponent uses large piece to cover
+                            isOffBoard: false,
+                        });
+
+                        // Check if we can win somewhere else now
+                        for (let tr = 0; tr < 3; tr++) {
+                            for (let tc = 0; tc < 3; tc++) {
+                                if (tr === move.row && tc === move.col) {
+                                    continue;
+                                }
+                                if (tr === r && tc === c) continue;
+
+                                // Check if placing here would win
+                                const finalBoard = JSON.parse(
+                                    JSON.stringify(simulatedCoverBoard),
+                                );
+                                if (!finalBoard[tr][tc]) {
+                                    finalBoard[tr][tc] = [];
+                                }
+
+                                finalBoard[tr][tc].push({
+                                    id: "player-win-sim",
+                                    player: player,
+                                    size: "L", // Use large piece for simulation
+                                    isOffBoard: false,
+                                });
+
+                                if (calculateWinner(finalBoard) === player) {
+                                    return move; // Found a trap move
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return null;
+};
+
+// Generate a human-readable explanation for an AI move
+export const getMoveExplanation = (aiMove: AIMove | null): string | null => {
+    if (!aiMove || !aiMove.moveReason) return null;
+
+    return "aiReasons." + aiMove.moveReason;
+};
+
+// Helper function to properly compare piece sizes
+const comparePieceSizes = (size1: PieceSize, size2: PieceSize): number => {
+    // Define size values for explicit comparison
+    const sizeValues: Record<PieceSize, number> = {
+        "S": 1,
+        "M": 2,
+        "L": 3,
+    };
+    return sizeValues[size1] - sizeValues[size2]; // Positive means size1 > size2
 };

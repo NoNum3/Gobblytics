@@ -13,89 +13,96 @@ Each rule will be marked as it's implemented with:
 ---
 
 ## 1. Core Decision Priority Hierarchy
-⬜ If can win in one move: take it
-⬜ If opponent can win in one move: block it
-⬜ If can create multiple winning threats: execute
-⬜ If opponent creates potential fork: block immediately
-⬜ If position development needed: center > corners > edges
-⬜ If equal moves available: use smallest piece that accomplishes goal
+✅ If can win in one move: take it (src/utils/aiLogic.ts - findWinningMove)
+✅ If opponent can win in one move: block it (src/utils/aiLogic.ts - findBlockingMove)
+✅ If can create multiple winning threats: execute (src/utils/aiLogic.ts - findForkCreationMove)
+✅ If opponent creates potential fork: block immediately (src/utils/aiLogic.ts - findBlockForkMove)
+✅ If position development needed: center > corners > edges (src/utils/aiLogic.ts - getAIMove)
+✅ If equal moves available: use smallest piece that accomplishes goal (src/utils/aiLogic.ts - findSmallestPieceMove)
 
 ## 2. Opening Phase Rules
-⬜ If first move and center empty: place smallest piece in center
-⬜ If opponent took center: place smallest piece in corner
-⬜ If all pieces available: save largest pieces for late game
-⬜ If opponent placed on edge: respond with placement in center or adjacent corner
+✅ If first move and center empty: place smallest piece in center (src/utils/aiLogic.ts - getAIMove)
+✅ If opponent took center: place smallest piece in corner (src/utils/aiLogic.ts - getAIMove)
+✅ If all pieces available: save largest pieces for late game (src/utils/aiLogic.ts - findSmallestPieceMove)
+✅ If opponent placed on edge: respond with placement in center or adjacent corner (src/utils/aiLogic.ts - getAIMove)
 
 ## 3. Mid-Game Tactical Rules
-⬜ If two pieces in a row for player: complete for win if possible
-⬜ If two pieces in a row for opponent: block immediately
-⬜ If opponent has two non-adjacent pieces in a line with gap between: block the gap
-⬜ If multiple threats exist: prioritize diagonal threats (often missed)
-⬜ If center is controlled by opponent with small piece: cover with medium piece
-⬜ If player has covered opponent's piece: protect that position from being covered
+✅ If two pieces in a row for player: complete for win if possible (src/utils/aiLogic.ts - findWinningMove)
+✅ If two pieces in a row for opponent: block immediately (src/utils/aiLogic.ts - findBlockingMove)
+✅ If opponent has two non-adjacent pieces in a line with gap between: block the gap (src/utils/aiLogic.ts - findGapBlockingMove)
+✅ If multiple threats exist: prioritize diagonal threats (often missed) (src/utils/aiLogic.ts - findDiagonalThreatMove)
+✅ If center is controlled by opponent with small piece: cover with medium piece (src/utils/aiLogic.ts - getAIMove)
+✅ If player has covered opponent's piece: protect that position from being covered (src/utils/aiLogic.ts - evaluatePosition)
 
 ## 4. Strategic Piece Management
-⬜ If all piece sizes still available: use smallest viable piece for any move
-⬜ If multiple pieces could win game: use smallest one
-⬜ If multiple pieces could block opponent: use smallest one that works
-⬜ If opponent has used most large pieces: become more aggressive with medium pieces
-⬜ If player has used most small pieces: recover them when strategic
+✅ If all piece sizes still available: use smallest viable piece for any move (src/utils/aiLogic.ts - findSmallestViablePieceMove)
+✅ If multiple pieces could win game: use smallest one (src/utils/aiLogic.ts - findWinningMove with findSmallestPieceMove)
+✅ If multiple pieces could block opponent: use smallest one that works (src/utils/aiLogic.ts - findBlockingMove with sort by size)
+✅ If opponent has used most large pieces: become more aggressive with medium pieces (src/utils/aiLogic.ts - evaluatePieceSizeAdvantage)
+✅ If player has used most small pieces: recover them when strategic (src/utils/aiLogic.ts - shouldRecoverPiece)
 
 ## 5. Positional Strategy
-⬜ If center available for medium/large piece: prioritize control
-⬜ If two corners controlled: focus on connecting them via edge or center
-⬜ If opponent controls two corners: block their connecting path
-⬜ If choice between edge and corner: corners offer more strategic value
-⬜ If board has most pieces on one side: develop toward emptier side
+✅ If center available for medium/large piece: prioritize control (src/utils/aiLogic.ts - getAIMove)
+✅ If two corners controlled: focus on connecting them via edge or center (src/utils/aiLogic.ts - evaluatePosition)
+✅ If opponent controls two corners: block their connecting path (src/utils/aiLogic.ts - findGapBlockingMove)
+✅ If choice between edge and corner: corners offer more strategic value (src/utils/aiLogic.ts - getAIMove cornerMoves)
+✅ If board has most pieces on one side: develop toward emptier side (src/utils/aiLogic.ts - evaluatePosition)
 
 ## 6. Fork Creation Rules
-⬜ If move creates two winning threats: execute immediately
-⬜ If move creates winning threat while blocking opponent: prioritize
-⬜ If can place piece that threatens two lines: prioritize over single threat
-⬜ If can create positional advantage (simplified from "slow fork"): setup if no immediate threats
+✅ If move creates two winning threats: execute immediately (src/utils/aiLogic.ts - findForkCreationMove)
+✅ If move creates winning threat while blocking opponent: prioritize (src/utils/aiLogic.ts - evaluatePosition)
+✅ If can place piece that threatens two lines: prioritize over single threat (src/utils/aiLogic.ts - countThreats)
+✅ If can create positional advantage (simplified from "slow fork"): setup if no immediate threats (src/utils/aiLogic.ts - evaluatePosition)
 
 ## 7. Piece Recovery Strategy
-⬜ If opponent has more pieces on board than player: prioritize recovering pieces over placing new ones
-⬜ If a small piece is covered and not contributing to defense: recover it before medium pieces
-⬜ If winning move available that uses recovered piece: execute over new placement
-⬜ If both players low on pieces: recover covered pieces aggressively
+✅ If opponent has more pieces on board than player: prioritize recovering pieces over placing new ones (src/utils/aiLogic.ts - shouldRecoverPiece)
+✅ If a small piece is covered and not contributing to defense: recover it before medium pieces (src/utils/aiLogic.ts - recoveryMoves sorted by size)
+✅ If winning move available that uses recovered piece: execute over new placement (src/utils/aiLogic.ts - findWinningMove)
+✅ If both players low on pieces: recover covered pieces aggressively (src/utils/aiLogic.ts - shouldRecoverPiece)
 
 ## 8. Trap Setting
-⬜ If player controls two corners with same size pieces: place third piece to create a "size trap" forcing opponent to use larger piece
-⬜ Create "sacrifice" positions where opponent covering actually enables a winning move
+✅ If player controls two corners with same size pieces: place third piece to create a "size trap" forcing opponent to use larger piece (src/utils/aiLogic.ts - findTrapMove)
+✅ Create "sacrifice" positions where opponent covering actually enables a winning move (src/utils/aiLogic.ts - findTrapMove)
 
 ## 9. Size Advantage Management
-⬜ Track remaining piece counts by size for both players
-⬜ If player has size advantage (more larger pieces): favor exchanges that force opponent to use large pieces
+✅ Track remaining piece counts by size for both players (src/utils/aiLogic.ts - countLargePiecesOffBoard)
+✅ If player has size advantage (more larger pieces): favor exchanges that force opponent to use large pieces (src/utils/aiLogic.ts - evaluatePieceSizeAdvantage)
 
 ## 10. Emergency Defense
-⬜ If opponent has multiple threatening positions: evaluate which is most dangerous based on piece availability
-⬜ When behind, prioritize moves that restrict opponent's options over creating own opportunities
+✅ If opponent has multiple threatening positions: evaluate which is most dangerous based on piece availability (src/utils/aiLogic.ts - findBlockingMove)
+✅ When behind, prioritize moves that restrict opponent's options over creating own opportunities (src/utils/aiLogic.ts - evaluatePosition)
 
 ## 11. Endgame Considerations
-⬜ If few moves remain: prioritize keeping largest piece for critical blocking
-⬜ If defensive and offensive move available: offense usually better in endgame
-⬜ If board nearly full: analyze for zugzwang (forced move disadvantage)
+🔄 If few moves remain: prioritize keeping largest piece for critical blocking (src/utils/aiLogic.ts - evaluatePosition, needs more specific endgame detection)
+✅ If defensive and offensive move available: offense usually better in endgame (src/utils/aiLogic.ts - evaluatePosition higher score for threats)
+🔄 If board nearly full: analyze for zugzwang (forced move disadvantage) (src/utils/aiLogic.ts - partially covered in evaluatePosition)
 
 ---
 
 ## Move Scoring Implementation
-This section will be updated with the scoring weights for each type of move, once the implementation begins.
+✅ Implemented in evaluatePosition with the following weights:
+- Win/loss: ±1000 points
+- Center control: 15 points + size bonus (L:8, M:5, S:2)
+- Threats (two in a row): 25 points per threat (30 for opponent threats)
+- Corner control: 4-8 points depending on piece size
+- Position control: 4 points per controlled position
+- Piece availability: 3 points per large piece
+- Gobbling potential: 5 points
+- Size advantage: 4 points
 
 ## Testing & Evaluation
-To validate the AI's effectiveness:
-1. Test against random move generator (should win 95%+)
-2. Test against human players of varying skill levels
-3. Analyze games where AI loses to identify rule gaps
-4. Refine rules based on observed weaknesses
-5. Verify each rule is being properly triggered
+🔄 Test against random move generator (should win 95%+)
+🔄 Test against human players of varying skill levels
+🔄 Analyze games where AI loses to identify rule gaps
+🔄 Refine rules based on observed weaknesses
+✅ Verify each rule is being properly triggered (through moveReason tracking)
 
 ## Performance Requirements
-- Decision making must complete within 1 second
-- No noticeable lag when AI determines its move
-- Consistent behavior for the same board state
+✅ Decision making must complete within 1 second
+✅ No noticeable lag when AI determines its move (implemented with delay for UX)
+✅ Consistent behavior for the same board state
 
 ---
 
-**Last Updated:** [Date]
-**Version:** 1.0
+**Last Updated:** October 19, 2023  
+**Version:** 1.1

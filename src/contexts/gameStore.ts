@@ -10,6 +10,26 @@ import type {
     Player,
 } from "../types/game";
 
+// Define MoveHistoryEntry to track moves
+export interface MoveHistoryEntry {
+    player: Player;
+    moveType: "place" | "move";
+    piece: {
+        id: string;
+        size: PieceSize;
+    };
+    from?: {
+        row: number;
+        col: number;
+    };
+    to: {
+        row: number;
+        col: number;
+    };
+    explanation?: string | null;
+    timestamp: number;
+}
+
 interface GameState {
     board: Board;
     pieces: {
@@ -21,8 +41,11 @@ interface GameState {
     gameMode: GameMode;
     gameStatus: GameStatus;
     winner: Player | null;
+    moveHistory: MoveHistoryEntry[];
+    lastMoveExplanation: string | null;
     // --- Actions ---
     initGame: (mode: GameMode) => void;
+    setGameMode: (mode: GameMode) => void;
     selectPiece: (pieceId: string | null) => void;
     placePiece: (row: number, col: number) => void;
     movePiece: (
@@ -35,6 +58,7 @@ interface GameState {
     switchTurn: () => void;
     saveGame: () => SavedGameState;
     loadGame: (gameState: SavedGameState) => void;
+    setMoveExplanation: (explanation: string | null) => void;
 }
 
 export interface SavedGameState {
@@ -47,6 +71,7 @@ export interface SavedGameState {
     gameMode: GameMode;
     gameStatus: GameStatus;
     winner: Player | null;
+    moveHistory: MoveHistoryEntry[];
 }
 
 const initialBoard: Board = Array(3).fill(null).map(() =>
@@ -151,6 +176,8 @@ export const useGameStore = create<GameState>()(
             gameMode: "local", // Default mode
             gameStatus: "in-progress",
             winner: null,
+            moveHistory: [],
+            lastMoveExplanation: null,
 
             initGame: (mode) =>
                 set(
@@ -167,9 +194,25 @@ export const useGameStore = create<GameState>()(
                         gameMode: mode,
                         gameStatus: "in-progress",
                         winner: null,
+                        moveHistory: [],
+                        lastMoveExplanation: null,
                     },
                     false,
                     "initGame",
+                ),
+
+            setGameMode: (mode) =>
+                set(
+                    { gameMode: mode },
+                    false,
+                    "setGameMode",
+                ),
+
+            setMoveExplanation: (explanation) =>
+                set(
+                    { lastMoveExplanation: explanation },
+                    false,
+                    "setMoveExplanation",
                 ),
 
             selectPiece: (pieceId) => {
@@ -246,6 +289,19 @@ export const useGameStore = create<GameState>()(
                     index === pieceIndex ? { ...p, isOffBoard: false } : p
                 );
 
+                // Create move history entry
+                const moveEntry: MoveHistoryEntry = {
+                    player: state.currentTurn,
+                    moveType: "place",
+                    piece: {
+                        id: pieceToPlace.id,
+                        size: pieceToPlace.size,
+                    },
+                    to: { row, col },
+                    explanation: state.lastMoveExplanation,
+                    timestamp: Date.now(),
+                };
+
                 set(
                     (prevState) => ({
                         board: newBoard,
@@ -254,6 +310,8 @@ export const useGameStore = create<GameState>()(
                             [prevState.currentTurn]: newPlayerPieces,
                         },
                         selectedPieceId: null,
+                        moveHistory: [...prevState.moveHistory, moveEntry],
+                        lastMoveExplanation: null,
                     }),
                     false,
                     "placePiece",
@@ -319,11 +377,27 @@ export const useGameStore = create<GameState>()(
                 newBoard[fromRow][fromCol].pop();
                 newBoard[toRow][toCol].push(pieceToMove);
 
+                // Create move history entry
+                const moveEntry: MoveHistoryEntry = {
+                    player: state.currentTurn,
+                    moveType: "move",
+                    piece: {
+                        id: pieceToMove.id,
+                        size: pieceToMove.size,
+                    },
+                    from: { row: fromRow, col: fromCol },
+                    to: { row: toRow, col: toCol },
+                    explanation: state.lastMoveExplanation,
+                    timestamp: Date.now(),
+                };
+
                 set(
-                    {
+                    (prevState) => ({
                         board: newBoard,
                         selectedPieceId: null,
-                    },
+                        moveHistory: [...prevState.moveHistory, moveEntry],
+                        lastMoveExplanation: null,
+                    }),
                     false,
                     "movePiece",
                 );
@@ -382,6 +456,7 @@ export const useGameStore = create<GameState>()(
                     gameMode: state.gameMode,
                     gameStatus: state.gameStatus,
                     winner: state.winner,
+                    moveHistory: state.moveHistory,
                 };
             },
 
@@ -397,6 +472,7 @@ export const useGameStore = create<GameState>()(
                         gameMode: gameState.gameMode,
                         gameStatus: gameState.gameStatus,
                         winner: gameState.winner,
+                        moveHistory: gameState.moveHistory || [],
                     },
                     false,
                     "loadGame",

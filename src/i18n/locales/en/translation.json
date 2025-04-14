@@ -2,6 +2,7 @@
   "appName": "Gobblet Gobblers",
   "localMultiplayer": "Local Multiplayer",
   "playerVsAI": "Player vs. AI",
+  "selectGameMode": "Select Game Mode",
   "playerHand": "{{player}}'s Hand",
   "yourTurn": "Your Turn",
   "playerTurn": "{{player}}'s Turn",
@@ -28,6 +29,11 @@
   
   "moveAnalysis": "Move Analysis",
   "boardAnalysis": "Board Analysis",
+  "moveHistory": "Move History",
+  "noMovesYet": "No moves made yet",
+  "small": "Small",
+  "medium": "Medium",
+  "large": "Large",
   "predictedAIMove": "Predicted AI Move",
   "aiPlacePiece": "AI might place {{size}} piece at {{position}}",
   "aiMovePiece": "AI might move {{size}} piece from {{from}} to {{to}}",
@@ -46,5 +52,27 @@
   "analysisMode": "Analysis Mode",
   "moveCount": "Moves analyzed: {{count}}",
   "thinking": "Thinking...",
-  "makeAIMove": "Make AI Move"
+  "makeAIMove": "Make AI Move",
+  
+  "aiThinking": "AI is thinking...",
+  "aiMoveExplanation": "AI Move Explanation",
+  
+  "aiReasons": {
+    "winMove": "I found a winning move! Three in a row achieved.",
+    "blockWin": "Blocking your potential win to prevent defeat.",
+    "createFork": "Creating a fork with multiple winning threats.",
+    "blockFork": "Blocking your potential fork to prevent a dual threat.",
+    "centerControl": "Taking control of the center for strategic advantage.",
+    "cornerControl": "Controlling a corner for positional advantage.",
+    "connectingPieces": "Connecting my pieces to build toward a win.",
+    "blockingLine": "Blocking your line to prevent a future win.",
+    "gobblePiece": "Gobbling your piece to gain board control.",
+    "recoveryMove": "Recovering my piece for later strategic use.",
+    "smallestPiece": "Using my smallest piece to preserve larger ones.",
+    "largestForBlock": "Using my largest piece to prevent you from gobbling it.",
+    "diagonalThreat": "Creating a threat on the diagonal.",
+    "openingMove": "Making a standard opening move.",
+    "strategicAdvantage": "Making a move that gives the best strategic advantage.",
+    "fallbackMove": "Making a safe move while considering my options."
+  }
 } 
