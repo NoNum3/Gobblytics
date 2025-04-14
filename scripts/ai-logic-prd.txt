@@ -1,0 +1,101 @@
+# Gobblet Gobblers AI Logic - Product Requirements Document
+
+## Overview
+This document outlines the rule-based algorithm for the computer opponent in Gobblet Gobblers. These rules will be implemented as deterministic decision-making logic without requiring machine learning or complex AI techniques.
+
+## Implementation Strategy
+Each rule will be marked as it's implemented with:
+- ⬜ Not yet implemented
+- ✅ Implemented (with file path and function reference)
+- 🔄 Implemented but requires refinement
+- ❌ Removed or replaced (with explanation)
+
+---
+
+## 1. Core Decision Priority Hierarchy
+⬜ If can win in one move: take it
+⬜ If opponent can win in one move: block it
+⬜ If can create multiple winning threats: execute
+⬜ If opponent creates potential fork: block immediately
+⬜ If position development needed: center > corners > edges
+⬜ If equal moves available: use smallest piece that accomplishes goal
+
+## 2. Opening Phase Rules
+⬜ If first move and center empty: place smallest piece in center
+⬜ If opponent took center: place smallest piece in corner
+⬜ If all pieces available: save largest pieces for late game
+⬜ If opponent placed on edge: respond with placement in center or adjacent corner
+
+## 3. Mid-Game Tactical Rules
+⬜ If two pieces in a row for player: complete for win if possible
+⬜ If two pieces in a row for opponent: block immediately
+⬜ If opponent has two non-adjacent pieces in a line with gap between: block the gap
+⬜ If multiple threats exist: prioritize diagonal threats (often missed)
+⬜ If center is controlled by opponent with small piece: cover with medium piece
+⬜ If player has covered opponent's piece: protect that position from being covered
+
+## 4. Strategic Piece Management
+⬜ If all piece sizes still available: use smallest viable piece for any move
+⬜ If multiple pieces could win game: use smallest one
+⬜ If multiple pieces could block opponent: use smallest one that works
+⬜ If opponent has used most large pieces: become more aggressive with medium pieces
+⬜ If player has used most small pieces: recover them when strategic
+
+## 5. Positional Strategy
+⬜ If center available for medium/large piece: prioritize control
+⬜ If two corners controlled: focus on connecting them via edge or center
+⬜ If opponent controls two corners: block their connecting path
+⬜ If choice between edge and corner: corners offer more strategic value
+⬜ If board has most pieces on one side: develop toward emptier side
+
+## 6. Fork Creation Rules
+⬜ If move creates two winning threats: execute immediately
+⬜ If move creates winning threat while blocking opponent: prioritize
+⬜ If can place piece that threatens two lines: prioritize over single threat
+⬜ If can create positional advantage (simplified from "slow fork"): setup if no immediate threats
+
+## 7. Piece Recovery Strategy
+⬜ If opponent has more pieces on board than player: prioritize recovering pieces over placing new ones
+⬜ If a small piece is covered and not contributing to defense: recover it before medium pieces
+⬜ If winning move available that uses recovered piece: execute over new placement
+⬜ If both players low on pieces: recover covered pieces aggressively
+
+## 8. Trap Setting
+⬜ If player controls two corners with same size pieces: place third piece to create a "size trap" forcing opponent to use larger piece
+⬜ Create "sacrifice" positions where opponent covering actually enables a winning move
+
+## 9. Size Advantage Management
+⬜ Track remaining piece counts by size for both players
+⬜ If player has size advantage (more larger pieces): favor exchanges that force opponent to use large pieces
+
+## 10. Emergency Defense
+⬜ If opponent has multiple threatening positions: evaluate which is most dangerous based on piece availability
+⬜ When behind, prioritize moves that restrict opponent's options over creating own opportunities
+
+## 11. Endgame Considerations
+⬜ If few moves remain: prioritize keeping largest piece for critical blocking
+⬜ If defensive and offensive move available: offense usually better in endgame
+⬜ If board nearly full: analyze for zugzwang (forced move disadvantage)
+
+---
+
+## Move Scoring Implementation
+This section will be updated with the scoring weights for each type of move, once the implementation begins.
+
+## Testing & Evaluation
+To validate the AI's effectiveness:
+1. Test against random move generator (should win 95%+)
+2. Test against human players of varying skill levels
+3. Analyze games where AI loses to identify rule gaps
+4. Refine rules based on observed weaknesses
+5. Verify each rule is being properly triggered
+
+## Performance Requirements
+- Decision making must complete within 1 second
+- No noticeable lag when AI determines its move
+- Consistent behavior for the same board state
+
+---
+
+**Last Updated:** [Date]
+**Version:** 1.0
