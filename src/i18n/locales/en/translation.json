@@ -1,0 +1,50 @@
+{
+  "appName": "Gobblet Gobblers",
+  "localMultiplayer": "Local Multiplayer",
+  "playerVsAI": "Player vs. AI",
+  "playerHand": "{{player}}'s Hand",
+  "yourTurn": "Your Turn",
+  "playerTurn": "{{player}}'s Turn",
+  "playerWins": "{{player}} Wins!",
+  "draw": "It's a Draw!",
+  "playAgain": "Play Again?",
+  "noPiecesLeft": "No pieces left",
+  
+  "choosePlayer": "Choose Your Player",
+  "playAsRed": "Play as Red",
+  "playAsBlue": "Play as Blue",
+  "goFirst": "Go First",
+  "goSecond": "Go Second",
+  
+  "invalidMove": {
+    "smallerPiece": "Invalid move: Your piece must be larger to gobble!",
+    "missingSource": "Please select a valid piece on the board first.",
+    "noEligiblePieces": "You don't have any pieces that can gobble this one."
+  },
+  
+  "select": {
+    "eligiblePiece": "Select one of your pieces to gobble this one."
+  },
+  
+  "moveAnalysis": "Move Analysis",
+  "boardAnalysis": "Board Analysis",
+  "predictedAIMove": "Predicted AI Move",
+  "aiPlacePiece": "AI might place {{size}} piece at {{position}}",
+  "aiMovePiece": "AI might move {{size}} piece from {{from}} to {{to}}",
+  "noValidMoves": "No valid moves predicted",
+  
+  "howToPlay": "How to Play",
+  "gameRules": "Gobblet Gobblers is a tic-tac-toe variant with different sized pieces. The goal is to get three of your pieces in a row, column, or diagonal.",
+  "rule1": "Larger pieces can cover smaller pieces ('gobble' them)",
+  "rule2": "You can move your pieces that are already on the board",
+  "rule3": "A covered piece is still in the game - if uncovered, it counts for its owner",
+  
+  "saveGame": "Save Game",
+  "loadGame": "Load Game",
+  "errorLoadingGame": "Error loading game! The file may be corrupted or invalid.",
+  
+  "analysisMode": "Analysis Mode",
+  "moveCount": "Moves analyzed: {{count}}",
+  "thinking": "Thinking...",
+  "makeAIMove": "Make AI Move"
+} 

@@ -1,0 +1,62 @@
+.piece {
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  position: absolute; /* For stacking within a cell */
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  user-select: none;
+  border: 3px solid transparent; /* For selection highlight */
+}
+
+/* Sizes */
+.S {
+  width: 40%;
+  height: 40%;
+  font-size: 0.8rem;
+  z-index: 3;
+}
+
+.M {
+  width: 65%;
+  height: 65%;
+  font-size: 1rem;
+  z-index: 2;
+}
+
+.L {
+  width: 90%;
+  height: 90%;
+  font-size: 1.2rem;
+  z-index: 1;
+}
+
+/* Player Colors */
+.Red {
+  background-color: #e74c3c; /* Red */
+  color: white;
+  border-color: #c0392b;
+}
+
+.Blue {
+  background-color: #3498db; /* Blue */
+  color: white;
+  border-color: #2980b9;
+}
+
+/* Selection Highlight */
+.selected {
+  border: 3px solid #f1c40f; /* Yellow border */
+  box-shadow: 0 0 10px #f1c40f;
+}
+
+/* Off-board styling (in player hand area) */
+.offBoard {
+  position: relative; /* Override absolute positioning */
+  margin: 5px;
+  width: 50px; /* Fixed size for hand */
+  height: 50px;
+} 

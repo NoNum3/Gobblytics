@@ -1,0 +1,15 @@
+{
+  "appName": "快到碗里来 (Gobblet Gobblers)",
+  "localMultiplayer": "本地多人游戏",
+  "playerVsAI": "玩家 vs. 电脑 (你是红色)",
+  "playerHand": "{{player}} 的手牌",
+  "yourTurn": "轮到你了",
+  "playerTurn": "轮到 {{player}}",
+  "playerWins": "{{player}} 获胜!",
+  "draw": "平局!",
+  "playAgain": "再玩一次?",
+  "noPiecesLeft": "没有棋子了",
+  "invalidMove": "无效移动",
+  "selectPiecePrompt": "选择要移动或放置的棋子。",
+  "language": "语言"
+} 

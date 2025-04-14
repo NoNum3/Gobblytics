@@ -1,0 +1,89 @@
+<context>
+# Overview
+This document outlines the Product Requirements for a client-side React application implementing the board game "Gobblet Gobblers". The application will provide a static website allowing users to play the game either against another local player or against a basic computer opponent. It aims to be an accessible and engaging digital version of the physical game, deployable as a static site with no backend dependencies. The target audience includes casual gamers, families, and fans of the original board game.
+
+# Core Features
+-   **Game Board:** A visually clear 3x3 grid. Columns will be labeled 'A' to 'C' and rows '1' to '3' for easy move referencing. The board will display the current state of pieces.
+-   **Piece Logic:** Implementation of Gobblet Gobblers rules regarding piece sizes (small, medium, large), placement, and "gobbling" smaller pieces with larger ones. Each player (Red and Blue) will have their set of pieces.
+-   **Game Modes:**
+    -   Local Multiplayer: Two users playing on the same device, one controlling Red pieces, the other Blue.
+    -   Player vs. Computer: A single user (playing as Red) competes against an AI opponent (controlling Blue).
+-   **AI Opponent:** A client-side AI that follows official game rules. It will possess basic strategic capabilities, including:
+    -   Identifying and blocking an opponent's potential winning move.
+    -   Recognizing and executing its own winning move.
+    -   Making logical moves based on the board state (no specific difficulty levels, but competent play).
+-   **Turn Indication:** Clear visual cues (e.g., gradient color effects on player identifiers or the board) to indicate whose turn it is (Red or Blue).
+-   **Descriptive Move Prompts:** Text-based prompts guiding users and describing game events (e.g., "Red places a large piece on B2", "Blue gobbles Red's piece on A1", "Red wins!").
+-   **Bilingual Support:** A toggle mechanism allowing users to switch the entire UI (buttons, labels, prompts) between English and Chinese.
+-   **Win Condition Logic:** Detection of three same-colored pieces in a row (horizontally, vertically, or diagonally) according to Gobblet Gobblers rules.
+
+# User Experience
+-   **User Personas:** Casual gamers, families looking for a simple digital board game, strategy game enthusiasts.
+-   **Key User Flows:**
+    1.  User visits the site.
+    2.  User selects game mode (Local vs. AI).
+    3.  User (and opponent/AI) take turns placing/moving pieces.
+    4.  Game indicates current turn and provides move descriptions.
+    5.  Game detects and announces win/draw condition.
+    6.  User can choose to play again.
+    7.  User can toggle language at any time.
+-   **UI/UX Considerations:** Clean, intuitive interface. Board and pieces should be easily distinguishable. Controls (mode select, language toggle, piece selection) should be straightforward. Responsive design suitable for typical desktop/laptop screens.
+</context>
+<PRD>
+# Technical Architecture
+-   **Framework:** React (using functional components and hooks).
+-   **State Management:** React Context API or Zustand for managing game state (board, pieces, current turn, mode, language).
+-   **Styling:** CSS Modules or Tailwind CSS for component styling.
+-   **AI Logic:** Implemented purely in client-side JavaScript/TypeScript within the React application. Minimax or simple heuristic-based decision making.
+-   **Internationalization (i18n):** Utilize a library like `react-i18next` or build a custom context-based solution for managing English and Chinese text content.
+-   **Deployment:** Static site hosting (e.g., GitHub Pages, Netlify, Vercel). No backend server required. Build process managed by Vite or Create React App.
+
+# Development Roadmap
+-   **Phase 1: Core Game Logic & Board:**
+    -   Implement board data structure.
+    -   Render the 3x3 board UI.
+    -   Implement piece data structure and initial placement off-board.
+    -   Implement core piece movement/placement logic (including gobbling) for local multiplayer.
+    -   Implement win condition detection.
+-   **Phase 2: AI Implementation:**
+    -   Develop AI decision-making function based on game state.
+    -   Integrate AI logic into the Player vs. Computer mode.
+    -   Ensure AI can identify and block wins, and make winning moves.
+-   **Phase 3: UI Enhancements & Interactivity:**
+    -   Implement clear turn indication visuals.
+    -   Add descriptive text prompts for moves and game status.
+    -   Refine piece selection and placement interaction.
+    -   Implement basic styling for board, pieces, and controls.
+-   **Phase 4: Bilingual Support:**
+    -   Set up i18n framework/solution.
+    -   Extract all user-facing strings.
+    -   Add translations for English and Chinese.
+    -   Implement language toggle functionality.
+-   **Phase 5: Testing & Polish:**
+    -   Thorough testing of game rules, AI behavior, and UI across modes.
+    -   Bug fixing.
+    -   Final styling and UX improvements.
+
+# Logical Dependency Chain
+1.  **Board Representation & Rendering:** Foundation for displaying the game.
+2.  **Piece Representation & Logic:** Core rules engine.
+3.  **Turn Management:** Controlling game flow.
+4.  **Win Condition:** Determining the game's end state.
+5.  **Local Multiplayer Mode:** Enabling basic playability.
+6.  **AI Logic:** Implementing the computer opponent.
+7.  **Player vs. AI Mode:** Integrating the AI.
+8.  **UI Elements (Turn Indicator, Prompts):** Enhancing user feedback.
+9.  **Internationalization Framework:** Setting up for language support.
+10. **Language Toggle & Translations:** Implementing bilingual feature.
+
+# Risks and Mitigations
+-   **Risk:** AI logic becomes overly complex or ineffective.
+    -   **Mitigation:** Start with simple heuristics (check for immediate win/loss), implement basic blocking/winning checks first. Avoid complex search algorithms initially. Test AI behavior iteratively.
+-   **Risk:** State management becomes convoluted.
+    -   **Mitigation:** Choose a state management solution early (Context API likely sufficient). Design a clear and normalized state structure. Keep state updates predictable.
+-   **Risk:** Implementing bilingual support adds significant overhead late in development.
+    -   **Mitigation:** Structure UI components with text externalization in mind from the start. Integrate the chosen i18n solution early (Phase 4) rather than leaving it to the very end.
+
+# Appendix
+-   Reference: Official Gobblet Gobblers rules (link to be added if found, e.g., https://www.ultraboardgames.com/gobblet/game-rules.php)
+</PRD> 

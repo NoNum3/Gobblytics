@@ -1,0 +1,61 @@
+# OFFICIAL RULES OF GOBBLET GOBBLERS
+
+## GAME COMPONENTS
+- Game board: A 3x3 grid
+- Game pieces: 12 hollow pieces (6 per player)
+  * Each player has 2 small pieces, 2 medium pieces, and 2 large pieces
+  * One player uses red pieces, the other uses blue pieces
+
+## OBJECTIVE
+The goal of Gobblet Gobblers is to be the first player to place three of your pieces in a row, either horizontally, vertically, or diagonally.
+
+## SETUP
+1. Each player takes all 6 pieces of their color.
+2. All pieces begin off the board.
+3. Red player goes first.
+
+## BASIC GAMEPLAY
+
+### Turns
+1. Players alternate turns.
+2. On your turn, you must perform ONE of the following actions:
+   a) Place a new piece from your hand onto an empty square on the board.
+   b) Place a new piece from your hand on top of a smaller piece already on the board (gobbling it).
+   c) Move one of your pieces already on the board to an empty square.
+   d) Move one of your pieces already on the board on top of a smaller piece (gobbling it).
+
+### Gobbling Rules
+1. A larger piece can gobble (cover) any smaller piece, regardless of its color.
+2. A piece can only gobble a smaller piece, never a piece of the same size or larger.
+3. The size hierarchy is: Large > Medium > Small
+4. When a piece is gobbled, it is not removed from the board but remains underneath.
+5. If a piece is moved away, any piece that was underneath becomes visible again and is active in the game.
+6. You can only move or gobble with the top piece in any stack.
+
+### Movement Rules
+1. You can only move your own pieces that are already on the board.
+2. You can only move the top piece in any stack.
+3. Pieces can move to any valid square on the board, not restricted by distance.
+4. A piece cannot be moved to a square containing a piece of the same size or larger.
+
+## WINNING CONDITIONS
+1. A player wins by forming a line of three of their pieces in a row, column, or diagonal.
+2. Only the visible (top) pieces count for forming a winning line.
+3. A winning line can be formed by placing a new piece, moving a piece, or as a result of uncovering a piece.
+4. If a player inadvertently creates a winning line for the opponent by moving one of their pieces and exposing the opponent's piece underneath, the opponent immediately wins.
+
+## SPECIAL SITUATIONS AND EDGE CASES
+1. Memory Rule: Players are allowed to lift their own pieces to see what's underneath, but must place them back in exactly the same position if they choose not to move that piece.
+2. Draw: If all pieces are placed on the board and no player has won, the game is a draw. This is extremely rare.
+3. Winning Priority: If a move simultaneously creates winning lines for both players (by uncovering an opponent's piece that completes their line while also completing your own line), the active player who just made the move wins.
+4. No Skipping Turns: A player must make a valid move on their turn; turns cannot be skipped.
+
+## STRATEGY TIPS
+1. Pay attention to what pieces are covered up - uncovering pieces can dramatically change the state of the game.
+2. Try to save your larger pieces for later in the game, when gobbling becomes more strategic.
+3. Watch for potential winning lines your opponent is setting up, especially those that could be completed by uncovering pieces.
+4. Control the center square when possible, as it contributes to the maximum number of possible winning lines.
+
+---
+
+This ruleset represents the official rules of Gobblet Gobblers and should be implemented without deviation to ensure authentic gameplay. 

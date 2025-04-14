@@ -1,0 +1,33 @@
+.gameStatus {
+  text-align: center;
+  margin: 1rem 0;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.turnRed {
+  color: #e74c3c;
+}
+
+.turnBlue {
+  color: #3498db;
+}
+
+.winner {
+  padding: 10px 20px;
+  border-radius: 5px;
+  color: white;
+}
+
+.winnerRed {
+  background-color: #e74c3c;
+}
+
+.winnerBlue {
+  background-color: #3498db;
+}
+
+.draw {
+    background-color: #95a5a6;
+    color: white;
+} 
