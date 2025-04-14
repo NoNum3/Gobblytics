@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --skipLibCheck && vite build",
+    "build": "tsc --skipLibCheck --noEmit && vite build",
+    "build:vite": "vite build",
     "preview": "vite preview",
     "list": "node scripts/dev.js list",
     "generate": "node scripts/dev.js generate",
     "parse-prd": "node scripts/dev.js parse-prd",
     "start": "node server.js",
-    "heroku-postbuild": "npm run build"
+    "heroku-postbuild": "npm run build:vite"
   },
   "devDependencies": {
     "@types/react": "^19.1.1",
