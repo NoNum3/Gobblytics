@@ -8,6 +8,7 @@ import MoveAnalysis from "./components/MoveAnalysis/MoveAnalysis";
 import AIMoveExplanation from "./components/AIMoveExplanation/AIMoveExplanation";
 import BoardAnalysis from "./components/BoardAnalysis/BoardAnalysis";
 import LanguageSwitcher from "./components/LanguageSwitcher/LanguageSwitcher";
+import Footer from "./components/Footer/Footer";
 import { useGameStore } from "./contexts/gameStore";
 import { getAIMove, getMoveExplanation } from "./utils/aiLogic";
 import type { GameMode, Player } from "./types/game";
@@ -258,14 +259,32 @@ function App() {
                     <PlayerHand player={AI_PLAYER} />
                 </div>
 
+                {/* Add Footer component */}
+                <Footer />
+
                 {/* Game Instructions */}
                 <div className="mt-12 p-4 bg-white rounded-lg shadow-sm text-sm text-gray-600">
-                    <h2 className="font-bold mb-2">{t("howToPlay")}</h2>
+                    <h2 className="font-bold mb-2 text-lg">{t("howToPlay")}</h2>
                     <p className="mb-2">{t("gameRules")}</p>
-                    <ul className="list-disc pl-5 space-y-1">
+                    <p className="mb-3">{t("gameComponents")}</p>
+
+                    <h3 className="font-semibold mb-1 text-gray-700">Rules:</h3>
+                    <ul className="list-disc pl-5 space-y-1 mb-4">
                         <li>{t("rule1")}</li>
                         <li>{t("rule2")}</li>
                         <li>{t("rule3")}</li>
+                        <li>{t("rule4")}</li>
+                        <li>{t("rule5")}</li>
+                        <li>{t("rule6")}</li>
+                    </ul>
+
+                    <h3 className="font-semibold mb-1 text-gray-700">
+                        Strategy Tips:
+                    </h3>
+                    <ul className="list-disc pl-5 space-y-1">
+                        <li>{t("strategy1")}</li>
+                        <li>{t("strategy2")}</li>
+                        <li>{t("strategy3")}</li>
                     </ul>
                 </div>
             </div>

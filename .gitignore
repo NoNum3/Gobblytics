@@ -44,7 +44,7 @@ node_modules/
 
 # Environment variables
 .cursor
-
+mcp.json
 # Environment variables
 .env
 .vscode
