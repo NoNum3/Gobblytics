@@ -35,66 +35,17 @@ function App() {
         state.setMoveExplanation
     );
     const moveHistory = useGameStore((state) => state.moveHistory);
+    const analysisMode = useGameStore((state) => state.analysisMode);
+    const toggleAnalysisMode = useGameStore((state) =>
+        state.toggleAnalysisMode
+    );
 
     // Local state
     const [aiThinking, setAiThinking] = useState(false);
-    const [analysisMode, setAnalysisMode] = useState(false);
     const [moveCount, setMoveCount] = useState(0);
     const [moveExplanation, setMoveExplanationLocal] = useState<string | null>(
         null,
     );
-
-    // Setup game when app loads
-    useEffect(() => {
-        setupGame();
-    }, []);
-
-    // Handle AI moves
-    useEffect(() => {
-        // Only make AI moves when it's AI's turn in AI mode
-        if (
-            gameMode === "ai" && currentTurn === AI_PLAYER &&
-            gameStatus === "in-progress" && !analysisMode
-        ) {
-            makeAIMove();
-        }
-    }, [gameMode, currentTurn, gameStatus, analysisMode]);
-
-    // Handle game mode change
-    const handleModeChange = useCallback((mode: GameMode) => {
-        console.log("Changing game mode to:", mode); // Debug log
-
-        // Make sure mode is explicitly set in the store
-        setGameMode(mode);
-
-        // Then initialize with that mode
-        initGame(mode);
-        setupGame();
-    }, [initGame, setGameMode]);
-
-    // Reset and initialize the game
-    const setupGame = useCallback(() => {
-        // Make sure this references the current game mode
-        const currentMode = useGameStore.getState().gameMode;
-        console.log("Setting up game with mode:", currentMode);
-
-        initGame(currentMode);
-        setMoveCount(0);
-        setAnalysisMode(false);
-        setMoveExplanationLocal(null);
-    }, [initGame]);
-
-    // Toggle analysis mode (AI doesn't auto-move)
-    const toggleAnalysisMode = useCallback(() => {
-        setAnalysisMode((prev) => !prev);
-    }, []);
-
-    // Manually trigger AI move when in analysis mode
-    const triggerAIMove = useCallback(() => {
-        if (currentTurn === AI_PLAYER && gameStatus === "in-progress") {
-            makeAIMove();
-        }
-    }, [currentTurn, gameStatus]);
 
     // Make AI move with thinking animation
     const makeAIMove = useCallback(() => {
@@ -135,6 +86,56 @@ function App() {
             setAiThinking(false);
         }, 800); // Delay in milliseconds
     }, [board, pieces, selectPiece, placePiece, movePiece, setMoveExplanation]);
+
+    // Setup game when app loads
+    useEffect(() => {
+        setupGame();
+    }, []);
+
+    // Handle AI moves
+    useEffect(() => {
+        // Get the current analysisMode state directly inside the effect
+        // const currentAnalysisMode = useGameStore.getState().analysisMode; // Can use analysisMode from dependencies now
+
+        // Only make AI moves when it's AI's turn in AI mode and NOT in analysis mode
+        if (
+            gameMode === "ai" && currentTurn === AI_PLAYER &&
+            gameStatus === "in-progress" && !analysisMode // Use analysisMode from dependencies
+        ) {
+            makeAIMove();
+        }
+        // Add analysisMode back to dependencies so the effect runs when it changes.
+        // The check inside (!analysisMode) prevents moves when analysis is ON.
+    }, [gameMode, currentTurn, gameStatus, analysisMode, makeAIMove]); // <-- RE-ADD analysisMode dependency
+
+    // Handle game mode change
+    const handleModeChange = useCallback((mode: GameMode) => {
+        console.log("Changing game mode to:", mode); // Debug log
+        setGameMode(mode);
+        initGame(mode);
+        setupGame();
+    }, [initGame, setGameMode]);
+
+    // Reset and initialize the game
+    const setupGame = useCallback(() => {
+        const currentMode = useGameStore.getState().gameMode;
+        console.log("Setting up game with mode:", currentMode);
+        initGame(currentMode);
+        setMoveCount(0);
+        setMoveExplanationLocal(null);
+    }, [initGame]);
+
+    // Toggle analysis mode - Now uses store action directly
+
+    // Manually trigger AI move when in analysis mode
+    const triggerAIMove = useCallback(() => {
+        if (
+            currentTurn === AI_PLAYER && gameStatus === "in-progress" &&
+            useGameStore.getState().analysisMode
+        ) {
+            makeAIMove();
+        }
+    }, [currentTurn, gameStatus, makeAIMove]);
 
     // Determine the human player based on the AI player
     const handleHumanMoveComplete = useCallback(() => {

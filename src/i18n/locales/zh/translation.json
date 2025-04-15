@@ -44,6 +44,8 @@
   "moveCount": "已分析移動：{{count}}",
   "thinking": "思考中...",
   "makeAIMove": "讓 AI 移動",
+  "undo": "撤銷",
+  "redo": "重做",
   "aiThinking": "AI 正在思考...",
   "aiMoveExplanation": "AI 移動說明",
   "aiReasons.winMove": "我找到了一個致勝的移動！達成三子連線。",

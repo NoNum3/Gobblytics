@@ -53,6 +53,8 @@
   "moveCount": "Moves analyzed: {{count}}",
   "thinking": "Thinking...",
   "makeAIMove": "Make AI Move",
+  "undo": "Undo",
+  "redo": "Redo",
   
   "aiThinking": "AI is thinking...",
   "aiMoveExplanation": "AI Move Explanation",

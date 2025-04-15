@@ -27,6 +27,13 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
     const { t } = useTranslation();
     const saveGame = useGameStore((state) => state.saveGame);
     const loadGame = useGameStore((state) => state.loadGame);
+    const undo = useGameStore((state) => state.undo);
+    const redo = useGameStore((state) => state.redo);
+    const canUndo = useGameStore((state) => state.canUndo);
+    const canRedo = useGameStore((state) => state.canRedo);
+    const toggleAnalysisMode = useGameStore((state) =>
+        state.toggleAnalysisMode
+    );
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleSaveGame = () => {
@@ -79,8 +86,8 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
         }
     };
 
-    const canToggleAnalysisMode = gameMode === "ai";
-    const showAnalysisControls = canToggleAnalysisMode && analysisMode;
+    const canToggleAnalysis = gameMode === "ai";
+    const showAnalysisUITools = canToggleAnalysis && analysisMode;
 
     return (
         <div className="flex flex-col gap-4">
@@ -209,7 +216,7 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
             </div>
 
             {/* Analysis Controls (AI Mode Only) */}
-            {canToggleAnalysisMode && (
+            {canToggleAnalysis && (
                 <div className="p-3 bg-white rounded-lg shadow-sm">
                     <div className="flex items-center justify-between">
                         <label className="flex items-center cursor-pointer">
@@ -221,7 +228,7 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                                     type="checkbox"
                                     className="sr-only"
                                     checked={analysisMode}
-                                    onChange={onAnalysisModeToggle}
+                                    onChange={toggleAnalysisMode}
                                 />
                                 <div
                                     className={`block w-10 h-6 rounded-full transition ${
@@ -250,7 +257,7 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
             )}
 
             {/* Trigger AI Move Button */}
-            {showAnalysisControls && (
+            {showAnalysisUITools && (
                 <button
                     className={`px-4 py-3 rounded-lg text-white font-medium mx-auto shadow-sm transition-colors ${
                         aiThinking
@@ -318,8 +325,67 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                 </button>
             )}
 
-            {/* Save/Load Controls */}
+            {/* Save/Load/Undo/Redo Controls */}
             <div className="flex justify-center gap-3 mt-2">
+                {/* Undo Button */}
+                <button
+                    onClick={undo}
+                    disabled={!canUndo()}
+                    className={`px-4 py-2 rounded-lg text-white shadow-sm transition-colors ${
+                        canUndo()
+                            ? "bg-yellow-600 hover:bg-yellow-700"
+                            : "bg-gray-400 cursor-not-allowed"
+                    }`}
+                >
+                    <div className="flex items-center">
+                        <svg
+                            className="mr-1 h-4 w-4"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 19l-7-7 7-7"
+                            />
+                        </svg>
+                        {t("undo")}
+                    </div>
+                </button>
+
+                {/* Redo Button */}
+                <button
+                    onClick={redo}
+                    disabled={!canRedo()}
+                    className={`px-4 py-2 rounded-lg text-white shadow-sm transition-colors ${
+                        canRedo()
+                            ? "bg-yellow-600 hover:bg-yellow-700"
+                            : "bg-gray-400 cursor-not-allowed"
+                    }`}
+                >
+                    <div className="flex items-center">
+                        {t("redo")}
+                        <svg
+                            className="ml-1 h-4 w-4"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 5l7 7-7 7"
+                            />
+                        </svg>
+                    </div>
+                </button>
+
+                {/* Save Button */}
                 <button
                     onClick={handleSaveGame}
                     className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors shadow-sm"
@@ -343,6 +409,7 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                     </div>
                 </button>
 
+                {/* Load Button */}
                 <button
                     onClick={handleLoadClick}
                     className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"

@@ -30,22 +30,43 @@ export interface MoveHistoryEntry {
     timestamp: number;
 }
 
-interface GameState {
+// --- Helper: Create a snapshot of the core game state ---
+// We exclude actions and potentially volatile UI state like lastMoveExplanation
+// Also exclude analysisMode as it's a UI toggle, not core game state history
+const createSnapshot = (state: GameState): CoreGameStateSnapshot => ({
+    board: state.board,
+    pieces: state.pieces,
+    currentTurn: state.currentTurn,
+    selectedPieceId: state.selectedPieceId,
+    gameMode: state.gameMode,
+    gameStatus: state.gameStatus,
+    winner: state.winner,
+    moveHistory: state.moveHistory,
+});
+
+// Define the core state that needs to be saved for undo/redo
+interface CoreGameStateSnapshot {
     board: Board;
-    pieces: {
-        Red: Piece[];
-        Blue: Piece[];
-    };
+    pieces: { Red: Piece[]; Blue: Piece[] };
     currentTurn: Player;
     selectedPieceId: string | null;
     gameMode: GameMode;
     gameStatus: GameStatus;
     winner: Player | null;
     moveHistory: MoveHistoryEntry[];
+}
+
+interface GameState extends CoreGameStateSnapshot { // Extend with snapshot fields
+    // History states
+    pastStates: CoreGameStateSnapshot[];
+    futureStates: CoreGameStateSnapshot[];
+    // Non-snapshotted state (mainly for UI interaction)
     lastMoveExplanation: string | null;
+    analysisMode: boolean;
     // --- Actions ---
     initGame: (mode: GameMode) => void;
     setGameMode: (mode: GameMode) => void;
+    toggleAnalysisMode: () => void;
     selectPiece: (pieceId: string | null) => void;
     placePiece: (row: number, col: number) => void;
     movePiece: (
@@ -59,6 +80,11 @@ interface GameState {
     saveGame: () => SavedGameState;
     loadGame: (gameState: SavedGameState) => void;
     setMoveExplanation: (explanation: string | null) => void;
+    undo: () => void;
+    redo: () => void;
+    // --- Selectors for UI ---
+    canUndo: () => boolean;
+    canRedo: () => boolean;
 }
 
 export interface SavedGameState {
@@ -166,6 +192,7 @@ const comparePieceSizes = (size1: PieceSize, size2: PieceSize): number => {
 export const useGameStore = create<GameState>()(
     devtools(
         (set, get) => ({
+            // --- Initial Core State ---
             board: initialBoard,
             pieces: {
                 Red: createInitialPieces("Red"),
@@ -173,15 +200,22 @@ export const useGameStore = create<GameState>()(
             },
             currentTurn: "Red",
             selectedPieceId: null,
-            gameMode: "local", // Default mode
+            gameMode: "local",
             gameStatus: "in-progress",
             winner: null,
             moveHistory: [],
+            analysisMode: false,
+            // --- History State ---
+            pastStates: [],
+            futureStates: [],
+            // --- Other State ---
             lastMoveExplanation: null,
 
+            // --- Actions Implementation ---
             initGame: (mode) =>
                 set(
                     {
+                        // Reset core state
                         board: Array(3).fill(null).map(() =>
                             Array(3).fill(null).map(() => [])
                         ),
@@ -195,6 +229,10 @@ export const useGameStore = create<GameState>()(
                         gameStatus: "in-progress",
                         winner: null,
                         moveHistory: [],
+                        analysisMode: false,
+                        // Reset history
+                        pastStates: [],
+                        futureStates: [],
                         lastMoveExplanation: null,
                     },
                     false,
@@ -215,6 +253,13 @@ export const useGameStore = create<GameState>()(
                     "setMoveExplanation",
                 ),
 
+            toggleAnalysisMode: () =>
+                set(
+                    (state) => ({ analysisMode: !state.analysisMode }),
+                    false,
+                    "toggleAnalysisMode",
+                ),
+
             selectPiece: (pieceId) => {
                 const state = get();
                 if (!pieceId) {
@@ -226,8 +271,16 @@ export const useGameStore = create<GameState>()(
                     return;
                 }
 
-                const playerPieces = state.pieces[state.currentTurn];
-                const piece = playerPieces.find((p) => p.id === pieceId);
+                let piece: Piece | undefined;
+                // In analysis mode (AI game), allow selecting ANY player's piece
+                if (state.gameMode === "ai" && state.analysisMode) {
+                    piece = state.pieces.Red.find((p) => p.id === pieceId) ||
+                        state.pieces.Blue.find((p) => p.id === pieceId);
+                } else {
+                    // Normal mode: Only allow selecting the current player's piece
+                    const playerPieces = state.pieces[state.currentTurn];
+                    piece = playerPieces.find((p) => p.id === pieceId);
+                }
 
                 if (piece) {
                     set({ selectedPieceId: pieceId }, false, "selectPiece");
@@ -245,12 +298,40 @@ export const useGameStore = create<GameState>()(
                 if (state.gameStatus !== "in-progress") return;
                 if (!state.selectedPieceId) return;
 
-                const playerPieces = state.pieces[state.currentTurn];
-                const pieceIndex = playerPieces.findIndex((p) =>
-                    p.id === state.selectedPieceId
-                );
-                if (pieceIndex === -1) return;
-                const pieceToPlace = playerPieces[pieceIndex];
+                // Find the piece owner based on selectedPieceId
+                let pieceOwner: Player | null = null;
+                let pieceToPlace: Piece | undefined;
+                let pieceIndex: number = -1;
+
+                for (const player of ["Red", "Blue"] as Player[]) {
+                    const index = state.pieces[player].findIndex((p) =>
+                        p.id === state.selectedPieceId
+                    );
+                    if (index !== -1) {
+                        pieceOwner = player;
+                        pieceToPlace = state.pieces[player][index];
+                        pieceIndex = index;
+                        break;
+                    }
+                }
+
+                if (!pieceOwner || !pieceToPlace) {
+                    console.error("Place Error: Selected piece not found.");
+                    set({ selectedPieceId: null });
+                    return;
+                }
+
+                // In analysis mode, allow placing any selected piece
+                // Otherwise, ensure it's the current turn's piece
+                if (
+                    !(state.gameMode === "ai" && state.analysisMode) &&
+                    pieceOwner !== state.currentTurn
+                ) {
+                    console.log(
+                        "Invalid Action: Cannot place opponent's piece outside analysis mode.",
+                    );
+                    return;
+                }
 
                 if (!pieceToPlace.isOffBoard) {
                     console.log(
@@ -274,6 +355,10 @@ export const useGameStore = create<GameState>()(
                     return;
                 }
 
+                // --- History Management ---
+                const currentStateSnapshot = createSnapshot(state);
+                // --- End History Management ---
+
                 const newBoard = state.board.map((r, rIdx) =>
                     r.map((c, cIdx) =>
                         rIdx === row && cIdx === col
@@ -285,13 +370,13 @@ export const useGameStore = create<GameState>()(
                     )
                 );
 
-                const newPlayerPieces = playerPieces.map((p, index) =>
-                    index === pieceIndex ? { ...p, isOffBoard: false } : p
-                );
+                const newPlayerPieces = state.pieces[pieceOwner].map((
+                    p,
+                    index,
+                ) => index === pieceIndex ? { ...p, isOffBoard: false } : p);
 
-                // Create move history entry
                 const moveEntry: MoveHistoryEntry = {
-                    player: state.currentTurn,
+                    player: pieceOwner,
                     moveType: "place",
                     piece: {
                         id: pieceToPlace.id,
@@ -304,13 +389,21 @@ export const useGameStore = create<GameState>()(
 
                 set(
                     (prevState) => ({
+                        // --- Update Core State ---
                         board: newBoard,
                         pieces: {
                             ...prevState.pieces,
-                            [prevState.currentTurn]: newPlayerPieces,
+                            [pieceOwner!]: newPlayerPieces, // Use pieceOwner
                         },
                         selectedPieceId: null,
                         moveHistory: [...prevState.moveHistory, moveEntry],
+                        // --- Update History State ---
+                        pastStates: [
+                            ...prevState.pastStates,
+                            currentStateSnapshot,
+                        ],
+                        futureStates: [], // Clear future states on new move
+                        // --- Clear Temporary State ---
                         lastMoveExplanation: null,
                     }),
                     false,
@@ -325,7 +418,10 @@ export const useGameStore = create<GameState>()(
                         "checkWin/win",
                     );
                 } else {
-                    get().switchTurn();
+                    // Only switch turn if NOT in analysis mode
+                    if (!(state.gameMode === "ai" && state.analysisMode)) {
+                        get().switchTurn();
+                    }
                 }
             },
 
@@ -334,15 +430,41 @@ export const useGameStore = create<GameState>()(
                 if (state.gameStatus !== "in-progress") return;
                 if (!state.selectedPieceId) return;
 
-                const pieceToMove = state.pieces[state.currentTurn].find((p) =>
-                    p.id === state.selectedPieceId
-                );
-                if (!pieceToMove || pieceToMove.isOffBoard) {
-                    console.error(
-                        "Move Error: Selected piece not found or is off-board.",
+                // Find the piece owner based on selectedPieceId
+                let pieceOwner: Player | null = null;
+                let pieceToMove: Piece | undefined;
+
+                for (const player of ["Red", "Blue"] as Player[]) {
+                    pieceToMove = state.pieces[player].find((p) =>
+                        p.id === state.selectedPieceId
                     );
+                    if (pieceToMove) {
+                        pieceOwner = player;
+                        break;
+                    }
+                }
+
+                if (!pieceOwner || !pieceToMove) {
+                    console.error("Move Error: Selected piece not found.");
                     set({ selectedPieceId: null });
                     return;
+                }
+
+                // Analysis mode check
+                const isAnalysis = state.gameMode === "ai" &&
+                    state.analysisMode;
+                if (!isAnalysis && pieceOwner !== state.currentTurn) {
+                    console.log(
+                        "Invalid Action: Cannot move opponent's piece outside analysis mode.",
+                    );
+                    return;
+                }
+
+                if (pieceToMove.isOffBoard) {
+                    console.error(
+                        "Move Error: Cannot move an off-board piece.",
+                    );
+                    return; // Should not happen if selection logic is correct
                 }
 
                 const sourceCell = state.board[fromRow]?.[fromCol];
@@ -370,6 +492,10 @@ export const useGameStore = create<GameState>()(
                     return;
                 }
 
+                // --- History Management ---
+                const currentStateSnapshot = createSnapshot(state);
+                // --- End History Management ---
+
                 const newBoard = state.board.map((r) =>
                     r.map((c) => c ? [...c] : [])
                 );
@@ -377,9 +503,8 @@ export const useGameStore = create<GameState>()(
                 newBoard[fromRow][fromCol].pop();
                 newBoard[toRow][toCol].push(pieceToMove);
 
-                // Create move history entry
                 const moveEntry: MoveHistoryEntry = {
-                    player: state.currentTurn,
+                    player: pieceOwner,
                     moveType: "move",
                     piece: {
                         id: pieceToMove.id,
@@ -393,9 +518,17 @@ export const useGameStore = create<GameState>()(
 
                 set(
                     (prevState) => ({
+                        // --- Update Core State ---
                         board: newBoard,
                         selectedPieceId: null,
                         moveHistory: [...prevState.moveHistory, moveEntry],
+                        // --- Update History State ---
+                        pastStates: [
+                            ...prevState.pastStates,
+                            currentStateSnapshot,
+                        ],
+                        futureStates: [], // Clear future states on new move
+                        // --- Clear Temporary State ---
                         lastMoveExplanation: null,
                     }),
                     false,
@@ -410,7 +543,10 @@ export const useGameStore = create<GameState>()(
                         "checkWin/win",
                     );
                 } else {
-                    get().switchTurn();
+                    // Only switch turn if NOT in analysis mode
+                    if (!isAnalysis) {
+                        get().switchTurn();
+                    }
                 }
             },
 
@@ -461,23 +597,74 @@ export const useGameStore = create<GameState>()(
             },
 
             loadGame: (gameState: SavedGameState) => {
+                const currentAnalysisMode = get().analysisMode; // <-- Get current analysis mode
                 set(
                     {
+                        // Restore core state
                         board: gameState.board,
-                        pieces: {
-                            Red: gameState.pieces.Red,
-                            Blue: gameState.pieces.Blue,
-                        },
+                        pieces: gameState.pieces,
                         currentTurn: gameState.currentTurn,
                         gameMode: gameState.gameMode,
                         gameStatus: gameState.gameStatus,
                         winner: gameState.winner,
                         moveHistory: gameState.moveHistory || [],
+                        // Reset history and other state
+                        pastStates: [],
+                        futureStates: [],
+                        selectedPieceId: null,
+                        lastMoveExplanation: null,
+                        analysisMode: currentAnalysisMode, // <-- Keep current analysis mode
                     },
                     false,
                     "loadGame",
                 );
             },
+
+            undo: () => {
+                const { pastStates, futureStates, analysisMode } = get();
+                if (pastStates.length === 0) return; // Nothing to undo
+
+                const currentStateSnapshot = createSnapshot(get());
+                const previousState = pastStates[pastStates.length - 1];
+                const newPastStates = pastStates.slice(0, -1);
+
+                set(
+                    {
+                        ...previousState, // Restore core state from snapshot
+                        pastStates: newPastStates,
+                        futureStates: [currentStateSnapshot, ...futureStates],
+                        lastMoveExplanation: null, // Clear explanation on undo/redo
+                        analysisMode: analysisMode, // <-- Keep current analysisMode
+                    },
+                    false,
+                    "undo",
+                );
+            },
+
+            redo: () => {
+                const { pastStates, futureStates, analysisMode } = get();
+                if (futureStates.length === 0) return; // Nothing to redo
+
+                const currentStateSnapshot = createSnapshot(get());
+                const nextState = futureStates[0];
+                const newFutureStates = futureStates.slice(1);
+
+                set(
+                    {
+                        ...nextState, // Restore core state from snapshot
+                        pastStates: [...pastStates, currentStateSnapshot],
+                        futureStates: newFutureStates,
+                        lastMoveExplanation: null, // Clear explanation on undo/redo
+                        analysisMode: analysisMode, // <-- Keep current analysisMode
+                    },
+                    false,
+                    "redo",
+                );
+            },
+
+            // --- Selectors Implementation ---
+            canUndo: () => get().pastStates.length > 0,
+            canRedo: () => get().futureStates.length > 0,
         }),
         { name: "GobbletGameStore" },
     ),

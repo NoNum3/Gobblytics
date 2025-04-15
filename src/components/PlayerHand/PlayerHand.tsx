@@ -16,31 +16,44 @@ const PlayerHand: React.FC<PlayerHandProps> = ({ player }) => {
     const selectedPieceId = useGameStore((state) => state.selectedPieceId);
     const currentTurn = useGameStore((state) => state.currentTurn);
     const gameMode = useGameStore((state) => state.gameMode);
+    const analysisMode = useGameStore((state) => state.analysisMode);
 
     const offBoardPieces = pieces.filter((p) => p.isOffBoard);
 
-    const handlePieceClick = (pieceId: string) => {
-        if (gameMode === 'ai' && player === 'Blue') return;
+    const isSelectable = currentTurn === player ||
+        (gameMode === "ai" && analysisMode);
 
-        if (currentTurn === player) {
+    const handlePieceClick = (pieceId: string) => {
+        if (isSelectable) {
             if (selectedPieceId === pieceId) {
                 selectPiece(null);
             } else {
                 selectPiece(pieceId);
             }
         } else {
-            console.log("Cannot select opponent's piece");
+            console.log(
+                "Cannot select piece: Not your turn or not in AI Analysis Mode.",
+            );
         }
     };
 
     const isPlayerTurn = currentTurn === player;
-    const isDisabled = gameMode === 'ai' && player === 'Blue';
+    const isDisabled = !isSelectable;
 
     return (
-        <div className={styles.playerHand} style={{ opacity: isDisabled ? 0.6 : 1 }}>
+        <div
+            className={styles.playerHand}
+            style={{ opacity: isDisabled ? 0.6 : 1 }}
+        >
             <h3>
-                {t('playerHand', { player })}
-                {isPlayerTurn && !isDisabled && <span className={`${styles.turnIndicator} ${styles[player]}`}>{t('yourTurn')}</span>}
+                {t("playerHand", { player })}
+                {isPlayerTurn && !isDisabled && (
+                    <span
+                        className={`${styles.turnIndicator} ${styles[player]}`}
+                    >
+                        {t("yourTurn")}
+                    </span>
+                )}
             </h3>
             <div className={styles.piecesContainer}>
                 {offBoardPieces.length > 0
@@ -49,12 +62,14 @@ const PlayerHand: React.FC<PlayerHandProps> = ({ player }) => {
                             <PieceComponent
                                 key={piece.id}
                                 piece={piece}
-                                onClick={!isDisabled ? handlePieceClick : undefined}
+                                onClick={isSelectable
+                                    ? handlePieceClick
+                                    : undefined}
                                 isSelected={selectedPieceId === piece.id}
                             />
                         ))
                     )
-                    : <p>{t('noPiecesLeft')}</p>}
+                    : <p>{t("noPiecesLeft")}</p>}
             </div>
         </div>
     );
