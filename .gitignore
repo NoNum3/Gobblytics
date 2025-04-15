@@ -12,6 +12,7 @@ node_modules
 .pnp
 .pnp.js
 
+
 # Build outputs
 dist
 dist-ssr
@@ -40,6 +41,10 @@ build
 dev-debug.log
 # Dependency directories
 node_modules/
+
+# Environment variables
+.cursor
+
 # Environment variables
 .env
 .vscode
