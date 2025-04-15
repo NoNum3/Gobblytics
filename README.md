@@ -32,12 +32,6 @@ cd gobblet-gobblers
 npm install
 ```
 
-## Configuration
-
-The application can be configured through environment variables in a `.env` file at the root of the project. Make sure to set the following variables:
-
-- `ANTHROPIC_API_KEY`: Your Anthropic API key for AI functionality.
-
 ## Running the Application
 
 To start the development server, run:
